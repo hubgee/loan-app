@@ -1,4 +1,6 @@
+// src/components/Navbar.jsx
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -23,16 +25,34 @@ export default function Navbar() {
         }`}
       >
         <li>
-          <a href="#" className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent">
+          <Link
+            to="/dashboard"
+            className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
+            onClick={() => setOpen(false)}
+          >
             Dashboard
-          </a>
+          </Link>
         </li>
         <li>
-          <a href="#" className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent">
+          <Link
+            to="/apply"
+            className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
+            onClick={() => setOpen(false)}
+          >
             Apply Loan
-          </a>
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/"
+            className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
+            onClick={() => setOpen(false)}
+          >
+            Home
+          </Link>
         </li>
       </ul>
     </nav>
   );
 }
+
