@@ -1,5 +1,6 @@
 // src/components/LoanForm.jsx
 import { useState } from "react";
+import { api, getCsrf } from "../api/client";
 
 export default function LoanForm({ onAddLoan }) {
   const [formData, setFormData] = useState({
@@ -20,21 +21,46 @@ export default function LoanForm({ onAddLoan }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.amount || !formData.nationalId) {
       alert("Please fill in all required fields and upload your ID.");
       return;
     }
-    onAddLoan({ ...formData, status: "Pending" });
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      amount: "",
-      purpose: "",
-      nationalId: null,
-    });
+
+    setSubmitting(true);
+    setMessage("");
+    try {
+      await getCsrf();
+      const fd = new FormData();
+      fd.append("name", formData.name);
+      fd.append("email", formData.email);
+      fd.append("phone", formData.phone);
+      fd.append("amount", formData.amount);
+      fd.append("purpose", formData.purpose);
+      fd.append("nationalId", formData.nationalId);
+
+      const res = await api.post("/loans", fd);
+      onAddLoan({ ...formData, status: "Pending", id: res.data.application.id });
+      setMessage("Application submitted successfully!");
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        amount: "",
+        purpose: "",
+        nationalId: null,
+      });
+    } catch (err) {
+      setMessage(
+        err.response?.data?.message || "Submission failed. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -111,10 +137,17 @@ export default function LoanForm({ onAddLoan }) {
       {/* Submit Button */}
       <button
         type="submit"
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        disabled={submitting}
+        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
       >
-        Submit Application
+        {submitting ? "Submitting..." : "Submit Application"}
       </button>
+
+      {message && (
+        <p className="text-sm text-center text-green-700 font-medium">
+          {message}
+        </p>
+      )}
     </form>
   );
 }

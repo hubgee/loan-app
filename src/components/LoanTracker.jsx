@@ -49,7 +49,7 @@ export default function LoanTracker({ loans, onUpdateLoan }) {
               <select
                 value={loan.status}
                 onChange={(e) =>
-                  onUpdateLoan(i, { ...loan, status: e.target.value })
+                  onUpdateLoan(loan.id, { ...loan, status: e.target.value })
                 }
                 className="border rounded px-2 py-1 text-sm"
               >

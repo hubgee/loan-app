@@ -1,9 +1,11 @@
 // src/components/Navbar.jsx
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/useAuth";
 
-export default function Navbar() {
+export default function Navbar({ admin }) {
   const [open, setOpen] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center sticky top-0 z-50">
@@ -24,15 +26,17 @@ export default function Navbar() {
           open ? "top-14" : "top-[-200px]"
         }`}
       >
-        <li>
-          <Link
-            to="/dashboard"
-            className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
-            onClick={() => setOpen(false)}
-          >
-            Dashboard
-          </Link>
-        </li>
+        {admin && (
+          <li>
+            <Link
+              to="/dashboard"
+              className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
+              onClick={() => setOpen(false)}
+            >
+              Dashboard
+            </Link>
+          </li>
+        )}
         <li>
           <Link
             to="/apply"
@@ -51,8 +55,30 @@ export default function Navbar() {
             Home
           </Link>
         </li>
+        {admin ? (
+          <li>
+            <button
+              onClick={() => {
+                logout();
+                setOpen(false);
+              }}
+              className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent w-full text-left"
+            >
+              Logout
+            </button>
+          </li>
+        ) : (
+          <li>
+            <Link
+              to="/login"
+              className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
+              onClick={() => setOpen(false)}
+            >
+              Admin Login
+            </Link>
+          </li>
+        )}
       </ul>
     </nav>
   );
 }
-
