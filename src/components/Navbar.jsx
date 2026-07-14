@@ -10,7 +10,7 @@ export default function Navbar({ admin }) {
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center sticky top-0 z-50">
       {/* App Title */}
-      <h1 className="text-lg font-bold">Loan App</h1>
+      <h1 className="text-lg font-bold">KUWALA-LOANS</h1>
 
       {/* Hamburger Button (mobile only) */}
       <button
