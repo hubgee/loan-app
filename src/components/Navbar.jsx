@@ -43,7 +43,7 @@ export default function Navbar({ admin }) {
             className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
             onClick={() => setOpen(false)}
           >
-            Apply Loan
+            Apply-Loan
           </Link>
         </li>
         <li>
@@ -54,6 +54,16 @@ export default function Navbar({ admin }) {
           >
             Home
           </Link>
+        </li>
+        <li>
+          <a
+            href="/Terms-Conditions.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
+          >
+            Terms & Conditions
+          </a>
         </li>
         {admin ? (
           <li>
@@ -74,7 +84,7 @@ export default function Navbar({ admin }) {
               className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent"
               onClick={() => setOpen(false)}
             >
-              Admin Login
+              Admin-Login
             </Link>
           </li>
         )}
