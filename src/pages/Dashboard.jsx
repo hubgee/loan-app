@@ -1,7 +1,7 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
 import LoanTracker from "../components/LoanTracker";
-import { api, getCsrf } from "../api/client";
+import { supabase, isAdmin } from "../api/supabaseClient";
 
 export default function Dashboard() {
   const [loans, setLoans] = useState([]);
@@ -15,21 +15,59 @@ export default function Dashboard() {
 
   const load = async () => {
     try {
-      const res = await api.get("/loans");
-      setLoans(res.data.applications);
-      setStats(res.data.stats);
+      const { data, error } = await supabase
+        .from("loan_applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const applications = (data || []).map((l) => ({
+        id: l.id,
+        name: l.borrower_name,
+        email: l.email,
+        phone: l.phone,
+        amount: l.amount,
+        purpose: l.purpose,
+        status: l.status,
+      }));
+
+      setLoans(applications);
+      setStats({
+        total: applications.length,
+        pending: applications.filter((l) => l.status === "Pending").length,
+        approved: applications.filter((l) => l.status === "Approved").length,
+        repaid: applications.filter((l) => l.status === "Repaid").length,
+      });
+    } catch (err) {
+      console.error("Failed to load loans", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // load() is async; state updates happen after an await, not synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
   const updateLoan = async (id, updatedLoan) => {
-    await getCsrf();
-    await api.patch(`/loans/${id}`, { status: updatedLoan.status });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || !isAdmin(user)) {
+      throw new Error("Not authorized.");
+    }
+
+    const { error } = await supabase
+      .from("loan_applications")
+      .update({
+        status: updatedLoan.status,
+        processed_by: user.id,
+      })
+      .eq("id", id);
+    if (error) throw error;
+
     setLoans((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status: updatedLoan.status } : l))
     );

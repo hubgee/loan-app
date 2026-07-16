@@ -1,6 +1,6 @@
 // src/components/LoanForm.jsx
 import { useState } from "react";
-import { api, getCsrf } from "../api/client";
+import { supabase } from "../api/supabaseClient";
 
 export default function LoanForm({ onAddLoan }) {
   const [formData, setFormData] = useState({
@@ -34,17 +34,31 @@ export default function LoanForm({ onAddLoan }) {
     setSubmitting(true);
     setMessage("");
     try {
-      await getCsrf();
-      const fd = new FormData();
-      fd.append("name", formData.name);
-      fd.append("email", formData.email);
-      fd.append("phone", formData.phone);
-      fd.append("amount", formData.amount);
-      fd.append("purpose", formData.purpose);
-      fd.append("nationalId", formData.nationalId);
+      const file = formData.nationalId;
+      const path = `ids/${Date.now()}_${file.name}`;
 
-      const res = await api.post("/loans", fd);
-      onAddLoan({ ...formData, status: "Pending", id: res.data.application.id });
+      const { error: uploadError } = await supabase.storage
+        .from("ids")
+        .upload(path, file, { upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data, error } = await supabase
+        .from("loan_applications")
+        .insert({
+          borrower_name: formData.name,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          amount: Number(formData.amount),
+          purpose: formData.purpose || null,
+          national_id_path: path,
+          national_id_original: file.name,
+          status: "Pending",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      onAddLoan({ ...formData, status: "Pending", id: data.id });
       setMessage("Application submitted successfully!");
       setFormData({
         name: "",
@@ -55,9 +69,7 @@ export default function LoanForm({ onAddLoan }) {
         nationalId: null,
       });
     } catch (err) {
-      setMessage(
-        err.response?.data?.message || "Submission failed. Please try again."
-      );
+      setMessage(err.message || "Submission failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -151,4 +163,3 @@ export default function LoanForm({ onAddLoan }) {
     </form>
   );
 }
-

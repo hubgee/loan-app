@@ -18,9 +18,7 @@ export default function Login() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Login failed. Check your credentials."
-      );
+      setError(err.message || "Login failed. Check your credentials.");
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from "react";
-import { api, getCsrf } from "../api/client";
+import { supabase, isAdmin } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
 
@@ -8,22 +8,45 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/me")
-      .then((res) => setAdmin(res.data.admin))
-      .catch(() => setAdmin(null))
-      .finally(() => setLoading(false));
+    let active = true;
+
+    const setFromSession = (session) => {
+      const user = session?.user;
+      setAdmin(user && isAdmin(user) ? user : null);
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setFromSession(data.session);
+      setLoading(false);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setFromSession(session);
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email, password) => {
-    await getCsrf();
-    const res = await api.post("/login", { email, password });
-    setAdmin(res.data.admin);
-    return res.data.admin;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    if (!isAdmin(data.user)) {
+      await supabase.auth.signOut();
+      throw new Error("This account is not authorized as an admin.");
+    }
+    setAdmin(data.user);
+    return data.user;
   };
 
   const logout = async () => {
-    await api.post("/logout");
+    await supabase.auth.signOut();
     setAdmin(null);
   };
 
