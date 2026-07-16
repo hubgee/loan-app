@@ -21,7 +21,7 @@ export default function ApplyLoan({ onAddLoan }) {
       <p className="text-gray-600 mb-6">
         Fill out the form below to submit your loan application.
       </p>
-      <div className="flex-grow">
+      <div className="grow">
         <LoanForm onAddLoan={onAddLoan} />
       </div>
     </div>
