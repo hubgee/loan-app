@@ -1,6 +1,18 @@
 // src/components/LoanForm.jsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "../api/supabaseClient";
+
+const DURATION_RATES = {
+  "1_week": 0.15,
+  "2_weeks": 0.30,
+  "1_month": 0.60,
+};
+
+const DURATION_DAYS = {
+  "1_week": 7,
+  "2_weeks": 14,
+  "1_month": 0,
+};
 
 export default function LoanForm({ onAddLoan }) {
   const [formData, setFormData] = useState({
@@ -8,8 +20,9 @@ export default function LoanForm({ onAddLoan }) {
     email: "",
     phone: "",
     amount: "",
+    duration: "1_week",
     purpose: "",
-    nationalId: null, // file upload
+    nationalId: null,
   });
 
   const handleChange = (e) => {
@@ -24,9 +37,33 @@ export default function LoanForm({ onAddLoan }) {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
+  const { interest, totalRepayment, repaymentDate } = useMemo(() => {
+    const amount = Number(formData.amount);
+    if (!amount || !formData.duration) {
+      return { interest: 0, totalRepayment: 0, repaymentDate: "" };
+    }
+    const rate = DURATION_RATES[formData.duration];
+    const interest = Number((amount * rate).toFixed(2));
+    const totalRepayment = Number((amount + interest).toFixed(2));
+    const date = new Date();
+    const days = DURATION_DAYS[formData.duration];
+    if (days > 0) {
+      date.setDate(date.getDate() + days);
+    } else {
+      date.setMonth(date.getMonth() + 1);
+    }
+    const repaymentDate = date.toISOString().split("T")[0];
+    return { interest, totalRepayment, repaymentDate };
+  }, [formData.amount, formData.duration]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.amount || !formData.nationalId) {
+    if (
+      !formData.name ||
+      !formData.amount ||
+      !formData.duration ||
+      !formData.nationalId
+    ) {
       alert("Please fill in all required fields and upload your ID.");
       return;
     }
@@ -49,6 +86,11 @@ export default function LoanForm({ onAddLoan }) {
           email: formData.email || null,
           phone: formData.phone || null,
           amount: Number(formData.amount),
+          duration: formData.duration,
+          interest_rate: DURATION_RATES[formData.duration],
+          interest_amount: interest,
+          total_repayment: totalRepayment,
+          repayment_date: repaymentDate,
           purpose: formData.purpose || null,
           national_id_path: path,
           national_id_original: file.name,
@@ -65,6 +107,7 @@ export default function LoanForm({ onAddLoan }) {
         email: "",
         phone: "",
         amount: "",
+        duration: "1_week",
         purpose: "",
         nationalId: null,
       });
@@ -74,6 +117,8 @@ export default function LoanForm({ onAddLoan }) {
       setSubmitting(false);
     }
   };
+
+  const formatMwk = (val) => "Mwk " + Number(val || 0).toLocaleString();
 
   return (
     <form
@@ -123,6 +168,27 @@ export default function LoanForm({ onAddLoan }) {
         className="w-full border rounded px-3 py-2"
         required
       />
+
+      {/* Loan Duration */}
+      <select
+        name="duration"
+        value={formData.duration}
+        onChange={handleChange}
+        className="w-full border rounded px-3 py-2"
+        required
+      >
+        <option value="1_week">1 Week (15% interest)</option>
+        <option value="2_weeks">2 Weeks (30% interest)</option>
+        <option value="1_month">1 Month (60% interest)</option>
+      </select>
+
+      {/* Auto-calculated interest + repayment date */}
+      {formData.amount && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
+          <p>Interest: {formatMwk(interest)}</p>
+          <p>Repayment date: {repaymentDate}</p>
+        </div>
+      )}
 
       {/* Purpose */}
       <textarea

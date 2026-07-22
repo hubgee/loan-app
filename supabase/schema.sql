@@ -32,18 +32,22 @@ on conflict (id) do nothing;
 -- ============================================================
 alter table public.loan_applications enable row level security;
 
+-- Add duration + interest/repayment columns
+alter table public.loan_applications
+  add column if not exists duration text not null default '1_week',
+  add column if not exists interest_rate numeric(5,4) not null default 0.15,
+  add column if not exists interest_amount numeric(12,2) not null default 0,
+  add column if not exists total_repayment numeric(12,2) not null default 0,
+  add column if not exists repayment_date date;
+
 -- Public (borrowers) can INSERT new applications.
--- We restrict the writable columns so they cannot set status/admin fields.
+-- We restrict only processed_by so columns can evolve freely.
 drop policy if exists "Public can submit applications" on public.loan_applications;
 create policy "Public can submit applications"
   on public.loan_applications
   for insert
   to anon, authenticated
-  with check (
-    status = 'Pending'
-    and processed_by is null
-    and national_id_path is not null
-  );
+  with check ( processed_by is null );
 
 -- Admins (role = 'admin') can SELECT all applications.
 drop policy if exists "Admins can read applications" on public.loan_applications;
@@ -64,8 +68,11 @@ create policy "Admins can update applications"
 
 -- ============================================================
 -- Storage RLS for the 'ids' bucket
+-- NOTE: storage.objects already has RLS enabled by Supabase by default,
+-- and your project role cannot ALTER it (ERROR 42501). Do NOT run
+-- `alter table storage.objects enable row level security;` — it is
+-- unnecessary. The policies below still apply correctly.
 -- ============================================================
-alter table storage.objects enable row level security;
 
 -- Only admins may read (download) uploaded IDs.
 drop policy if exists "Admins can read ids" on storage.objects;

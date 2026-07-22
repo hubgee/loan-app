@@ -27,6 +27,10 @@ export default function Dashboard() {
         email: l.email,
         phone: l.phone,
         amount: l.amount,
+        duration: l.duration,
+        interest_amount: l.interest_amount,
+        total_repayment: l.total_repayment,
+        repayment_date: l.repayment_date,
         purpose: l.purpose,
         status: l.status,
       }));

@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+const DURATION_LABELS = {
+  "1_week": "1 Week",
+  "2_weeks": "2 Weeks",
+  "1_month": "1 Month",
+};
+
 export default function LoanTracker({ loans, onUpdateLoan }) {
   const [filter, setFilter] = useState("All");
 
@@ -42,6 +48,18 @@ export default function LoanTracker({ loans, onUpdateLoan }) {
 
             {/* Loan amount */}
             <p>Amount: Mkw {loan.amount}</p>
+
+            {/* Duration */}
+            <p>Duration: {DURATION_LABELS[loan.duration] || loan.duration}</p>
+
+            {/* Interest */}
+            <p>Interest: Mkw {loan.interest_amount}</p>
+
+            {/* Total repayment */}
+            <p>Total repayment: Mkw {loan.total_repayment}</p>
+
+            {/* Repayment date */}
+            <p>Due: {loan.repayment_date}</p>
 
             {/* Status dropdown */}
             <div className="flex items-center gap-2">
