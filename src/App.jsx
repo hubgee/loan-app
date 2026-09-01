@@ -6,15 +6,12 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./auth/AuthContext";
-import { useAuth } from "./auth/useAuth";
 
 function AppContent() {
-  const { admin } = useAuth();
-
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
-        <Navbar admin={admin} />
+        <Navbar />
         <div className="p-4 max-w-4xl mx-auto">
           <Routes>
             <Route
