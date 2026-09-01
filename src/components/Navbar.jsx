@@ -1,8 +1,10 @@
 // src/components/Navbar.jsx
 import { useState } from "react";
+import { useAuth } from "../auth/useAuth";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const { admin, logout } = useAuth();
 
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center sticky top-0 z-50">
@@ -33,6 +35,19 @@ export default function Navbar() {
             Terms & Conditions
           </a>
         </li>
+        {admin && (
+          <li>
+            <button
+              onClick={() => {
+                logout();
+                setOpen(false);
+              }}
+              className="block py-2 px-4 hover:bg-blue-700 md:hover:bg-transparent w-full text-left"
+            >
+              Logout
+            </button>
+          </li>
+        )}
       </ul>
     </nav>
   );
