@@ -1,9 +1,12 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import LoanTracker from "../components/LoanTracker";
-import { supabase, isAdmin } from "../api/supabaseClient";
+import { supabase } from "../api/supabaseClient";
+import { useAuth } from "../auth/useAuth";
 
 export default function Dashboard() {
+  const { isAdmin } = useAuth();
   const [loans, setLoans] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -59,7 +62,7 @@ export default function Dashboard() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user || !isAdmin(user)) {
+    if (!user || !isAdmin) {
       throw new Error("Not authorized.");
     }
 
@@ -86,8 +89,16 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+    <div className="min-h-screen bg-slate-50 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+        <Link
+          to="/admin/users"
+          className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 w-fit"
+        >
+          Manage users
+        </Link>
+      </div>
 
       {/* Stats summary */}
       <div className="grid grid-cols-3 gap-4">

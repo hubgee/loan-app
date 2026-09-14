@@ -1,6 +1,8 @@
 // src/components/LoanForm.jsx
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../api/supabaseClient";
+import { useAuth } from "../auth/useAuth";
 
 const DURATION_RATES = {
   "1_week": 0.15,
@@ -15,6 +17,7 @@ const DURATION_DAYS = {
 };
 
 export default function LoanForm({ onAddLoan }) {
+  const { user, isActive, isAdmin } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -58,6 +61,14 @@ export default function LoanForm({ onAddLoan }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user) {
+      setMessage("Please log in to submit an application.");
+      return;
+    }
+    if (!isActive && !isAdmin) {
+      setMessage("Your account is pending activation by an admin.");
+      return;
+    }
     if (
       !formData.name ||
       !formData.amount ||
@@ -72,7 +83,7 @@ export default function LoanForm({ onAddLoan }) {
     setMessage("");
     try {
       const file = formData.nationalId;
-      const path = `ids/${Date.now()}_${file.name}`;
+      const path = `${user.id}/${Date.now()}_${file.name}`;
 
       const { error: uploadError } = await supabase.storage
         .from("ids")
@@ -82,6 +93,7 @@ export default function LoanForm({ onAddLoan }) {
       const { data, error } = await supabase
         .from("loan_applications")
         .insert({
+          user_id: user.id,
           borrower_name: formData.name,
           email: formData.email || null,
           phone: formData.phone || null,
@@ -95,6 +107,7 @@ export default function LoanForm({ onAddLoan }) {
           national_id_path: path,
           national_id_original: file.name,
           status: "Pending",
+          processed_by: null,
         })
         .select()
         .single();
@@ -119,6 +132,40 @@ export default function LoanForm({ onAddLoan }) {
   };
 
   const formatMwk = (val) => "Mwk " + Number(val || 0).toLocaleString();
+
+  if (!user) {
+    return (
+      <div className="space-y-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
+        <h2 className="text-lg font-bold text-slate-800">Loan Application</h2>
+        <p className="text-slate-600 text-sm">
+          Please{" "}
+          <Link to="/login" className="text-indigo-600 underline">
+            log in
+          </Link>{" "}
+          or{" "}
+          <Link to="/signup" className="text-indigo-600 underline">
+            sign up
+          </Link>{" "}
+          to apply.
+        </p>
+      </div>
+    );
+  }
+
+  if (!isActive && !isAdmin) {
+    return (
+      <div className="space-y-4 bg-amber-50 p-6 rounded-2xl border border-amber-200 text-center">
+        <h2 className="text-lg font-bold text-slate-800">Pending activation</h2>
+        <p className="text-slate-600 text-sm">
+          Your account is awaiting admin activation. You&apos;ll be able to
+          apply once activated.
+        </p>
+        <Link to="/pending" className="text-indigo-600 underline text-sm">
+          View status
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <form

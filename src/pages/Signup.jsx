@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
-export default function Login() {
-  const { login } = useAuth();
+export default function Signup() {
+  const { signup } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,12 +15,10 @@ export default function Login() {
     setError("");
     setSubmitting(true);
     try {
-      const { profile } = await login(email, password);
-      if (profile?.role === "admin") navigate("/dashboard");
-      else if (profile?.active) navigate("/loans");
-      else navigate("/pending");
+      await signup(email, password);
+      navigate("/pending");
     } catch (err) {
-      setError(err.message || "Login failed. Check your credentials.");
+      setError(err.message || "Signup failed. Try again.");
     } finally {
       setSubmitting(false);
     }
@@ -29,25 +27,30 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-800 mb-4">Login</h1>
+        <h1 className="text-2xl font-bold text-slate-800 mb-2">
+          Create borrower account
+        </h1>
+        <p className="text-slate-600 text-sm mb-4">
+          Sign up with email + password. An admin will activate your account
+          before you can apply.
+        </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
-            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder="Email address"
             className="w-full border border-slate-200 rounded px-3 py-3"
             required
           />
           <input
             type="password"
-            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder="Password (min 6 chars)"
             className="w-full border border-slate-200 rounded px-3 py-3"
             required
+            minLength={6}
           />
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <button
@@ -55,17 +58,13 @@ export default function Login() {
             disabled={submitting}
             className="w-full bg-indigo-600 text-white py-3 rounded hover:bg-indigo-700 disabled:opacity-50"
           >
-            {submitting ? "Logging in..." : "Login"}
+            {submitting ? "Creating account..." : "Sign up"}
           </button>
         </form>
         <p className="text-center text-sm text-slate-500 mt-4">
-          No account?{" "}
-          <Link to="/signup" className="text-indigo-600 hover:underline">
-            Sign up
-          </Link>{" "}
-          •{" "}
-          <Link to="/" className="text-indigo-600 hover:underline">
-            Back to home
+          Already have an account?{" "}
+          <Link to="/login" className="text-indigo-600 hover:underline">
+            Log in
           </Link>
         </p>
       </div>
