@@ -9,9 +9,10 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    const wasAdmin = isAdmin;
     await logout();
     setOpen(false);
-    navigate("/login");
+    navigate(wasAdmin ? "/admin/login" : "/login");
   };
 
   const close = () => setOpen(false);

@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar";
 import ApplyLoan from "./pages/ApplyLoan";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
 import Signup from "./pages/Signup";
 import PendingActivation from "./pages/PendingActivation";
 import UserDashboard from "./pages/UserDashboard";
@@ -22,6 +23,10 @@ function AppContent() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/pending" element={<PendingActivation />} />
+            {/* Private admin entry point (unlinked from public UI).
+                Local: http://localhost:5173/admin/login
+                Vercel: https://<your-app>.vercel.app/admin/login */}
+            <Route path="/admin/login" element={<AdminLogin />} />
             <Route
               path="/apply"
               element={
@@ -41,7 +46,10 @@ function AppContent() {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute
+                  requiredRole="admin"
+                  loginRedirect="/admin/login"
+                >
                   <Dashboard />
                 </ProtectedRoute>
               }
@@ -49,7 +57,10 @@ function AppContent() {
             <Route
               path="/admin/users"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute
+                  requiredRole="admin"
+                  loginRedirect="/admin/login"
+                >
                   <UserManagement />
                 </ProtectedRoute>
               }

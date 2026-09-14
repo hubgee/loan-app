@@ -1,9 +1,10 @@
 -- ============================================================
--- Kuwala Loans — Supabase backend setup (free plan, testing)
+-- Kuwala Loans — Supabase backend (Vercel frontend + Supabase)
 -- Run this in: Supabase Dashboard -> SQL Editor -> New query -> Run
+-- Safe to re-run (uses IF NOT EXISTS / DROP POLICY IF EXISTS).
 -- ============================================================
 
--- 1) Table: loan_applications
+-- 1) Table: loan_applications (base, kept backward-compatible)
 create table if not exists public.loan_applications (
   id              bigint generated always as identity primary key,
   borrower_name   text not null,
@@ -22,17 +23,7 @@ create table if not exists public.loan_applications (
 create index if not exists loan_applications_status_idx
   on public.loan_applications (status);
 
--- 2) Storage bucket for uploaded National IDs (private)
-insert into storage.buckets (id, name, public)
-values ('ids', 'ids', false)
-on conflict (id) do nothing;
-
--- ============================================================
--- Row Level Security (RLS)
--- ============================================================
-alter table public.loan_applications enable row level security;
-
--- Add duration + interest/repayment columns
+-- Loan terms / repayment columns
 alter table public.loan_applications
   add column if not exists duration text not null default '1_week',
   add column if not exists interest_rate numeric(5,4) not null default 0.15,
@@ -40,65 +31,146 @@ alter table public.loan_applications
   add column if not exists total_repayment numeric(12,2) not null default 0,
   add column if not exists repayment_date date;
 
--- Public (borrowers) can INSERT new applications.
--- We restrict only processed_by so columns can evolve freely.
-drop policy if exists "Public can submit applications" on public.loan_applications;
-create policy "Public can submit applications"
-  on public.loan_applications
-  for insert
-  to anon, authenticated
-  with check ( processed_by is null );
+-- Borrower attribution (required by frontend LoanForm: user_id = auth.uid())
+alter table public.loan_applications
+  add column if not exists user_id uuid references public.users(id) on delete set null;
 
--- Admins (role = 'admin') can SELECT all applications.
+create index if not exists loan_applications_user_id_idx
+  on public.loan_applications (user_id);
+
+-- 2) Table: users — single source of truth for role + activation
+create table if not exists public.users (
+  id              uuid primary key references auth.users(id) on delete cascade,
+  email           text not null,
+  role            text not null check (role in ('user','admin')) default 'user',
+  active          boolean not null default false,
+  created_at      timestamptz not null default now()
+);
+
+alter table public.users enable row level security;
+
+-- Users read own row
+drop policy if exists "Users can read own" on public.users;
+create policy "Users can read own" on public.users
+for select to authenticated
+using (id = auth.uid());
+
+-- Admins read all users
+drop policy if exists "Admins can read users" on public.users;
+create policy "Admins can read users" on public.users
+for select to authenticated
+using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
+
+-- Admins update role/active
+drop policy if exists "Admins can update users" on public.users;
+create policy "Admins can update users" on public.users
+for update to authenticated
+using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
+with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
+
+-- 3) Trigger: auto-create inactive user row on signup
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into public.users (id, email, role, active)
+  values (new.id, new.email, 'user', false)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+-- 4) Storage bucket for uploaded National IDs (private)
+insert into storage.buckets (id, name, public)
+values ('ids', 'ids', false)
+on conflict (id) do nothing;
+
+-- ============================================================
+-- Row Level Security: loan_applications (users-table based)
+-- ============================================================
+alter table public.loan_applications enable row level security;
+
+-- Borrowers insert own (active only). Frontend sends user_id = auth.uid().
+drop policy if exists "Public can submit applications" on public.loan_applications;
+drop policy if exists "Borrowers can submit own applications" on public.loan_applications;
+create policy "Borrowers can submit own applications"
+  on public.loan_applications
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and processed_by is null
+    and exists (select 1 from public.users u where u.id = auth.uid() and u.active = true)
+  );
+
+-- Borrowers read own (active only)
+drop policy if exists "Borrowers can read own applications" on public.loan_applications;
+create policy "Borrowers can read own applications"
+  on public.loan_applications
+  for select to authenticated
+  using (
+    user_id = auth.uid()
+    and exists (select 1 from public.users u where u.id = auth.uid() and u.active = true)
+  );
+
+-- Admins read all (via users table — no more user_metadata checks)
 drop policy if exists "Admins can read applications" on public.loan_applications;
 create policy "Admins can read applications"
   on public.loan_applications
-  for select
-  to authenticated
-  using ( (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin' );
+  for select to authenticated
+  using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
--- Admins can UPDATE status / processed_by.
+-- Admins update (approve / mark repaid)
 drop policy if exists "Admins can update applications" on public.loan_applications;
 create policy "Admins can update applications"
   on public.loan_applications
-  for update
-  to authenticated
-  using ( (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin' )
-  with check ( (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin' );
+  for update to authenticated
+  using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
+  with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
 -- ============================================================
 -- Storage RLS for the 'ids' bucket
--- NOTE: storage.objects already has RLS enabled by Supabase by default,
--- and your project role cannot ALTER it (ERROR 42501). Do NOT run
--- `alter table storage.objects enable row level security;` — it is
--- unnecessary. The policies below still apply correctly.
+-- NOTE: storage.objects already has RLS enabled by Supabase.
+-- Do NOT run `alter table storage.objects enable row level security;`
+-- (ERROR 42501 on free plan). Policies below still apply.
 -- ============================================================
 
--- Only admins may read (download) uploaded IDs.
+-- Active borrowers can upload their own ID to <uid>/... (matches LoanForm path)
+drop policy if exists "Public can upload ids" on storage.objects;
+drop policy if exists "Borrowers can upload own ids" on storage.objects;
+create policy "Borrowers can upload own ids"
+  on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'ids'
+    and (storage.foldername(name))[1] = auth.uid()::text
+    and exists (select 1 from public.users u where u.id = auth.uid() and u.active = true)
+  );
+
+-- Admins read all IDs
 drop policy if exists "Admins can read ids" on storage.objects;
 create policy "Admins can read ids"
   on storage.objects
-  for select
-  to authenticated
+  for select to authenticated
   using (
     bucket_id = 'ids'
-    and (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin'
+    and exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin')
   );
 
--- Public can upload into the ids bucket (insert object).
-drop policy if exists "Public can upload ids" on storage.objects;
-create policy "Public can upload ids"
-  on storage.objects
-  for insert
-  to anon, authenticated
-  with check ( bucket_id = 'ids' );
-
 -- ============================================================
--- NOTE: Creating admin users
--- 1. In Supabase Dashboard -> Authentication -> Users -> Add user
---    (enter email + password; check "Auto Confirm User").
--- 2. In the SQL editor run (replace the email):
---      update auth.users
---      set raw_user_meta_data = jsonb_build_object('role','admin')
---      where email = 'admin@kuwala-loans.com';
+-- SETUP (Supabase Dashboard, one time)
+-- 1. Authentication -> Settings -> enable "Auto Confirm User"
+--    (so signups get a session immediately and land on /pending).
+-- 2. Run this whole file in SQL Editor.
+-- 3. Backfill existing admin (find UUID in Authentication -> Users):
+--      insert into public.users (id, email, role, active)
+--      values ('<existing-admin-uuid>', '<admin-email>', 'admin', true)
+--      on conflict (id) do update set role = 'admin', active = true;
+-- 4. Vercel -> Project -> Settings -> Environment Variables:
+--      VITE_SUPABASE_URL=https://your-project.supabase.co
+--      VITE_SUPABASE_ANON_KEY=<anon public key>
+--    then Redeploy. Admin login lives at /admin/login (unlinked, private).
 -- ============================================================

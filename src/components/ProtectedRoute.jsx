@@ -5,6 +5,7 @@ export default function ProtectedRoute({
   children,
   requiredRole,
   requireActive = false,
+  loginRedirect = "/login",
 }) {
   const { user, isAdmin, isActive, loading } = useAuth();
 
@@ -17,7 +18,7 @@ export default function ProtectedRoute({
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginRedirect} replace />;
   }
 
   // Default (backward-compat): bare <ProtectedRoute> (undefined role) means admin-only.

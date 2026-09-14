@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
-export default function Login() {
+// Private admin entry point. Deliberately NOT linked from the public UI.
+// URL (local + Vercel): /admin/login -> on success -> /dashboard
+export default function AdminLogin() {
   const { login, logout } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -16,13 +18,12 @@ export default function Login() {
     setSubmitting(true);
     try {
       const { profile } = await login(email, password);
-      if (profile?.role === "admin") {
+      if (profile?.role !== "admin") {
         await logout();
-        setError("Admins please log in at /admin/login.");
+        setError("Not an admin account. Borrowers please use /login.");
         return;
       }
-      if (profile?.active) navigate("/loans");
-      else navigate("/pending");
+      navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Login failed. Check your credentials.");
     } finally {
@@ -31,48 +32,46 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
+    <div className="min-h-screen bg-slate-900 p-6 flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-800 mb-1">Borrower Login</h1>
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          Kuwala Loans • Restricted
+        </p>
+        <h1 className="text-2xl font-bold text-slate-800 mb-1">Admin Login</h1>
         <p className="text-sm text-slate-500 mb-4">
-          Don&apos;t have an account? Sign up, then wait for activation.
+          Staff only. Borrowers use the regular login page.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
-            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+            placeholder="Admin email"
             className="w-full border border-slate-200 rounded px-3 py-3"
             required
+            autoComplete="username"
           />
           <input
             type="password"
-            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             className="w-full border border-slate-200 rounded px-3 py-3"
             required
+            autoComplete="current-password"
           />
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-indigo-600 text-white py-3 rounded hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full bg-slate-900 text-white py-3 rounded hover:bg-slate-800 disabled:opacity-50"
           >
-            {submitting ? "Logging in..." : "Login"}
+            {submitting ? "Verifying..." : "Login as admin"}
           </button>
         </form>
         <p className="text-center text-sm text-slate-500 mt-4">
-          No account?{" "}
-          <Link to="/signup" className="text-indigo-600 hover:underline">
-            Sign up
-          </Link>{" "}
-          •{" "}
           <Link to="/" className="text-indigo-600 hover:underline">
-            Back to home
+            Back to site
           </Link>
         </p>
       </div>
