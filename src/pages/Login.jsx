@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
 export default function Login() {
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,20 +16,13 @@ export default function Login() {
     setSubmitting(true);
     try {
       const { profile } = await login(email, password);
-      if (!profile) {
-        await logout();
-        setError(
-          "No profile found for this account. Please sign up first or contact support."
-        );
-        return;
-      }
-      if (profile.role === "admin") {
-        await logout();
+      if (profile?.role === "admin") {
         setError("Admins please log in at /admin/login.");
-        return;
+      } else if (profile?.active) {
+        navigate("/loans");
+      } else {
+        navigate("/pending");
       }
-      if (profile.active) navigate("/loans");
-      else navigate("/pending");
     } catch (err) {
       setError(err.message || "Login failed. Check your credentials.");
     } finally {
@@ -40,7 +33,9 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-800 mb-1">Borrower Login</h1>
+        <h1 className="text-2xl font-bold text-slate-800 mb-1">
+          Borrower Login
+        </h1>
         <p className="text-sm text-slate-500 mb-4">
           Don&apos;t have an account? Sign up, then wait for activation.
         </p>

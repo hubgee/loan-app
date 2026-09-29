@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
-// Private admin entry point. Deliberately NOT linked from the public UI.
-// URL (local + Vercel): /admin/login -> on success -> /dashboard
 export default function AdminLogin() {
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,19 +16,13 @@ export default function AdminLogin() {
     setSubmitting(true);
     try {
       const { profile } = await login(email, password);
-      if (!profile) {
-        await logout();
+      if (profile?.role === "admin") {
+        navigate("/dashboard");
+      } else {
         setError(
-          "No profile found for this account. Please contact support or try the borrower login at /login."
+          "This is not an admin account. Please use the borrower login at /login."
         );
-        return;
       }
-      if (profile.role !== "admin") {
-        await logout();
-        setError("Not an admin account. Borrowers please use /login.");
-        return;
-      }
-      navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Login failed. Check your credentials.");
     } finally {

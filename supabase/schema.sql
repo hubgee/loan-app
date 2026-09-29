@@ -4,7 +4,7 @@
 -- Safe to re-run (uses IF NOT EXISTS / DROP POLICY IF EXISTS).
 -- ============================================================
 
--- 1) Table: loan_applications (base, kept backward-compatible)
+-- 1) Table: loan_applications
 create table if not exists public.loan_applications (
   id              bigint generated always as identity primary key,
   borrower_name   text not null,
@@ -23,7 +23,6 @@ create table if not exists public.loan_applications (
 create index if not exists loan_applications_status_idx
   on public.loan_applications (status);
 
--- Loan terms / repayment columns
 alter table public.loan_applications
   add column if not exists duration text not null default '1_week',
   add column if not exists interest_rate numeric(5,4) not null default 0.15,
@@ -31,7 +30,6 @@ alter table public.loan_applications
   add column if not exists total_repayment numeric(12,2) not null default 0,
   add column if not exists repayment_date date;
 
--- Borrower attribution (required by frontend LoanForm: user_id = auth.uid())
 alter table public.loan_applications
   add column if not exists user_id uuid references public.users(id) on delete set null;
 
@@ -49,32 +47,35 @@ create table if not exists public.users (
 
 alter table public.users enable row level security;
 
--- Users read own row
+-- RLS policies for users table
 drop policy if exists "Users can read own" on public.users;
 create policy "Users can read own" on public.users
 for select to authenticated
 using (id = auth.uid());
 
--- Users insert own row (needed for admin bootstrap upsert)
 drop policy if exists "Users can insert own" on public.users;
 create policy "Users can insert own" on public.users
 for insert to authenticated
 with check (id = auth.uid());
 
--- Admins read all users
 drop policy if exists "Admins can read users" on public.users;
 create policy "Admins can read users" on public.users
 for select to authenticated
 using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
--- Admins update role/active
 drop policy if exists "Admins can update users" on public.users;
 create policy "Admins can update users" on public.users
 for update to authenticated
 using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
 with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
--- 3) Trigger: auto-create inactive user row on signup
+-- 3) App settings table (stores admin email for bootstrap)
+create table if not exists public.app_settings (
+  key   text primary key,
+  value text not null
+);
+
+-- 4) Trigger: auto-create inactive user row on signup
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
@@ -87,21 +88,48 @@ $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
--- 4) Storage bucket for uploaded National IDs (private)
+-- 5) Admin bootstrap function (called by frontend after login)
+-- This function checks if the current user's email matches the admin email
+-- stored in app_settings, and if so, creates/updates their profile as admin.
+create or replace function public.bootstrap_admin_profile()
+returns void language plpgsql security definer as $$
+declare
+  admin_email text;
+  user_email  text;
+begin
+  -- Get admin email from settings
+  select value into admin_email from public.app_settings where key = 'admin_email';
+
+  -- If no admin email configured, do nothing
+  if admin_email is null then
+    return;
+  end if;
+
+  -- Get current user's email
+  select email into user_email from auth.users where id = auth.uid();
+
+  -- If emails match, bootstrap admin profile
+  if user_email is not null and lower(user_email) = lower(admin_email) then
+    insert into public.users (id, email, role, active)
+    values (auth.uid(), user_email, 'admin', true)
+    on conflict (id) do update set role = 'admin', active = true;
+  end if;
+end;
+$$;
+
+-- 6) Storage bucket for uploaded National IDs (private)
 insert into storage.buckets (id, name, public)
 values ('ids', 'ids', false)
 on conflict (id) do nothing;
 
 -- ============================================================
--- Row Level Security: loan_applications (users-table based)
+-- Row Level Security: loan_applications
 -- ============================================================
 alter table public.loan_applications enable row level security;
 
--- Borrowers insert own (active only). Frontend sends user_id = auth.uid().
-drop policy if exists "Public can submit applications" on public.loan_applications;
 drop policy if exists "Borrowers can submit own applications" on public.loan_applications;
 create policy "Borrowers can submit own applications"
   on public.loan_applications
@@ -112,7 +140,6 @@ create policy "Borrowers can submit own applications"
     and exists (select 1 from public.users u where u.id = auth.uid() and u.active = true)
   );
 
--- Borrowers read own (active only)
 drop policy if exists "Borrowers can read own applications" on public.loan_applications;
 create policy "Borrowers can read own applications"
   on public.loan_applications
@@ -122,14 +149,12 @@ create policy "Borrowers can read own applications"
     and exists (select 1 from public.users u where u.id = auth.uid() and u.active = true)
   );
 
--- Admins read all (via users table — no more user_metadata checks)
 drop policy if exists "Admins can read applications" on public.loan_applications;
 create policy "Admins can read applications"
   on public.loan_applications
   for select to authenticated
   using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
--- Admins update (approve / mark repaid)
 drop policy if exists "Admins can update applications" on public.loan_applications;
 create policy "Admins can update applications"
   on public.loan_applications
@@ -139,13 +164,7 @@ create policy "Admins can update applications"
 
 -- ============================================================
 -- Storage RLS for the 'ids' bucket
--- NOTE: storage.objects already has RLS enabled by Supabase.
--- Do NOT run `alter table storage.objects enable row level security;`
--- (ERROR 42501 on free plan). Policies below still apply.
 -- ============================================================
-
--- Active borrowers can upload their own ID to <uid>/... (matches LoanForm path)
-drop policy if exists "Public can upload ids" on storage.objects;
 drop policy if exists "Borrowers can upload own ids" on storage.objects;
 create policy "Borrowers can upload own ids"
   on storage.objects
@@ -156,7 +175,6 @@ create policy "Borrowers can upload own ids"
     and exists (select 1 from public.users u where u.id = auth.uid() and u.active = true)
   );
 
--- Admins read all IDs
 drop policy if exists "Admins can read ids" on storage.objects;
 create policy "Admins can read ids"
   on storage.objects
@@ -167,14 +185,14 @@ create policy "Admins can read ids"
   );
 
 -- ============================================================
--- SETUP (Supabase Dashboard, one time)
+-- SETUP INSTRUCTIONS (Supabase Dashboard, one time)
+-- ============================================================
 -- 1. Authentication -> Settings -> enable "Auto Confirm User"
---    (so signups get a session immediately and land on /pending).
 -- 2. Run this whole file in SQL Editor.
--- 3. Backfill existing admin (find UUID in Authentication -> Users):
---      insert into public.users (id, email, role, active)
---      values ('<existing-admin-uuid>', '<admin-email>', 'admin', true)
---      on conflict (id) do update set role = 'admin', active = true;
+-- 3. Set the admin email in app_settings:
+--      insert into public.app_settings (key, value)
+--      values ('admin_email', 'your-admin-email@example.com')
+--      on conflict (key) do update set value = excluded.value;
 -- 4. Vercel -> Project -> Settings -> Environment Variables:
 --      VITE_SUPABASE_URL=https://your-project.supabase.co
 --      VITE_SUPABASE_ANON_KEY=<anon public key>

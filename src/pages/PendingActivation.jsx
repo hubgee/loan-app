@@ -13,6 +13,11 @@ export default function PendingActivation() {
     else if (isActive) navigate("/loans");
   }, [user, isAdmin, isActive, loading, navigate]);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center space-y-4">
@@ -35,10 +40,7 @@ export default function PendingActivation() {
             I&apos;ve been activated — refresh
           </button>
           <button
-            onClick={() => {
-              logout();
-              navigate("/login");
-            }}
+            onClick={handleLogout}
             className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300"
           >
             Logout
