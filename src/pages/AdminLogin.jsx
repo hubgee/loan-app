@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
 export default function AdminLogin() {
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,11 +16,22 @@ export default function AdminLogin() {
     setSubmitting(true);
     try {
       const { profile } = await login(email, password);
+
       if (profile?.role === "admin") {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      // Not an admin — clear the session so we never sit half-authenticated.
+      await logout();
+
+      if (!profile) {
+        setError(
+          "No profile record found for this account. Ask your developer to re-run the Supabase schema so the signup trigger exists."
+        );
       } else {
         setError(
-          "This is not an admin account. Please use the borrower login at /login."
+          "This account is registered as a borrower, not an admin. Ask your developer to run in Supabase: insert into public.app_settings (key, value) values ('admin_email', 'your-email@example.com') on conflict (key) do update set value = excluded.value;"
         );
       }
     } catch (err) {

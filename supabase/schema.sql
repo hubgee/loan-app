@@ -95,30 +95,43 @@ create trigger on_auth_user_created
 -- This function checks if the current user's email matches the admin email
 -- stored in app_settings, and if so, creates/updates their profile as admin.
 create or replace function public.bootstrap_admin_profile()
-returns void language plpgsql security definer as $$
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
 declare
   admin_email text;
   user_email  text;
 begin
   -- Get admin email from settings
-  select value into admin_email from public.app_settings where key = 'admin_email';
+  select value into admin_email
+    from public.app_settings
+   where key = 'admin_email';
 
-  -- If no admin email configured, do nothing
-  if admin_email is null then
+  -- No admin email configured: do nothing
+  if admin_email is null or admin_email = '' then
     return;
   end if;
 
-  -- Get current user's email
-  select email into user_email from auth.users where id = auth.uid();
+  -- Get current authenticated user's email straight from auth
+  select email into user_email
+    from auth.users
+   where id = auth.uid();
 
-  -- If emails match, bootstrap admin profile
+  -- Matching email: promote (or create) the profile as an active admin
   if user_email is not null and lower(user_email) = lower(admin_email) then
     insert into public.users (id, email, role, active)
     values (auth.uid(), user_email, 'admin', true)
-    on conflict (id) do update set role = 'admin', active = true;
+    on conflict (id) do update
+      set role = 'admin', active = true, email = excluded.email;
   end if;
 end;
 $$;
+
+-- The RPC is called from the browser with the user's JWT, so authenticated
+-- (and anon, harmlessly) must be able to execute it.
+grant execute on function public.bootstrap_admin_profile() to authenticated, anon, service_role;
 
 -- 6) Storage bucket for uploaded National IDs (private)
 insert into storage.buckets (id, name, public)

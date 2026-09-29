@@ -3,6 +3,16 @@ import { supabase } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
 
+// Guard against a request that never settles (network stalls, RLS hangs).
+// Without this a single hung call freezes the whole auth flow.
+const withTimeout = (promise, ms, label) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -17,9 +27,12 @@ export function AuthProvider({ children }) {
       .from("users")
       .select("id, email, role, active")
       .eq("id", userId)
-      .single();
-    if (error) return null;
-    return data;
+      .maybeSingle();
+    if (error) {
+      console.error("[auth] fetchProfile failed:", error.message);
+      return null;
+    }
+    return data ?? null;
   }, []);
 
   const loadProfile = useCallback(
@@ -38,23 +51,29 @@ export function AuthProvider({ children }) {
   );
 
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
+    // Initial session restore — safe, runs outside any auth lock.
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
+      if (!mounted) return;
       await loadProfile(data.session?.user ?? null);
-      if (active) setLoading(false);
+      if (mounted) setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        await loadProfile(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // CRITICAL: the auth client holds an internal lock while this callback
+      // runs. Awaiting any other Supabase call here deadlocks the app forever
+      // (symptoms: buttons stuck on "Verifying...", logout doing nothing).
+      // Defer the async work to the next tick so the lock is released first.
+      setTimeout(() => {
+        loadProfile(session?.user ?? null).finally(() => {
+          if (mounted) setLoading(false);
+        });
+      }, 0);
+    });
 
     return () => {
-      active = false;
+      mounted = false;
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);
@@ -66,8 +85,21 @@ export function AuthProvider({ children }) {
     });
     if (error) throw error;
 
-    // Bootstrap admin profile if this is the designated admin email
-    await supabase.rpc("bootstrap_admin_profile");
+    // Promote this account to admin if its email matches app_settings.admin_email.
+    // Runs security-definer server-side, so it bypasses RLS. Never let it
+    // block or break the login — failures fall through to the normal profile.
+    try {
+      const { error: rpcError } = await withTimeout(
+        supabase.rpc("bootstrap_admin_profile"),
+        8000,
+        "bootstrap_admin_profile"
+      );
+      if (rpcError) {
+        console.error("[auth] admin bootstrap failed:", rpcError.message);
+      }
+    } catch (err) {
+      console.error("[auth] admin bootstrap error:", err.message);
+    }
 
     const p = await loadProfile(data.user);
     return { user: data.user, profile: p };
@@ -77,27 +109,29 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
 
+    // With "Auto Confirm User" on, a session is returned immediately and the
+    // DB trigger has already created the inactive profile row.
     if (data.session?.user) {
       const p = await loadProfile(data.session.user);
       return { user: data.session.user, profile: p };
     }
-    if (data.user) {
-      setUser(data.user);
-      const p = await fetchProfile(data.user.id);
-      setProfile(p);
-      return { user: data.user, profile: p };
-    }
-    return { user: null, profile: null };
+
+    // Email confirmation required: no session yet, just report the pending user.
+    setUser(null);
+    setProfile(null);
+    return { user: data.user ?? null, profile: null };
   };
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      await withTimeout(supabase.auth.signOut(), 8000, "signOut");
     } catch (err) {
-      console.error("Logout error:", err);
+      console.error("[auth] signOut failed, clearing local state anyway:", err.message);
+    } finally {
+      // Always clear local state so the UI can never get stuck signed in.
+      setUser(null);
+      setProfile(null);
     }
-    setUser(null);
-    setProfile(null);
   };
 
   const refresh = async () => {
