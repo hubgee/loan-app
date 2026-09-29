@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { createContext, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
@@ -18,6 +18,12 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Monotonic token. Every profile read takes a ticket; a response is only
+  // allowed to write state if it still holds the newest ticket. Without this,
+  // a slow read issued before login()'s bootstrap can resolve AFTER it and
+  // silently overwrite a fresh admin profile with a stale borrower one.
+  const profileTicket = useRef(0);
+
   const isAdmin = profile?.role === "admin";
   const isActive = profile?.active === true;
 
@@ -36,14 +42,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   const loadProfile = useCallback(
-    async (sessionUser) => {
+    async (sessionUser, preloadedProfile = null) => {
+      const ticket = ++profileTicket.current;
+
       if (!sessionUser) {
         setUser(null);
         setProfile(null);
         return null;
       }
+
+      // Optimistically expose the session so the Navbar updates immediately.
       setUser(sessionUser);
-      const p = await fetchProfile(sessionUser.id);
+
+      const p = preloadedProfile ?? (await fetchProfile(sessionUser.id));
+
+      // A newer read has started — this response is stale, drop it.
+      if (ticket !== profileTicket.current) {
+        return p;
+      }
+
       setProfile(p);
       return p;
     },
@@ -86,22 +103,30 @@ export function AuthProvider({ children }) {
     if (error) throw error;
 
     // Promote this account to admin if its email matches app_settings.admin_email.
-    // Runs security-definer server-side, so it bypasses RLS. Never let it
-    // block or break the login — failures fall through to the normal profile.
+    // Runs security-definer server-side, so it bypasses RLS, and returns the
+    // authoritative profile row so we don't need a racy second read.
+    let promoted = null;
     try {
-      const { error: rpcError } = await withTimeout(
+      const { data: rpcData, error: rpcError } = await withTimeout(
         supabase.rpc("bootstrap_admin_profile"),
         8000,
         "bootstrap_admin_profile"
       );
       if (rpcError) {
         console.error("[auth] admin bootstrap failed:", rpcError.message);
+      } else if (rpcData && typeof rpcData === "object") {
+        promoted = {
+          id: rpcData.id,
+          email: rpcData.email,
+          role: rpcData.role,
+          active: rpcData.active,
+        };
       }
     } catch (err) {
       console.error("[auth] admin bootstrap error:", err.message);
     }
 
-    const p = await loadProfile(data.user);
+    const p = await loadProfile(data.user, promoted);
     return { user: data.user, profile: p };
   };
 
@@ -123,6 +148,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // Invalidate any in-flight profile read so it can't repopulate state
+    // after we've signed out.
+    profileTicket.current++;
     try {
       await withTimeout(supabase.auth.signOut(), 8000, "signOut");
     } catch (err) {
