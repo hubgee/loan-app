@@ -16,12 +16,19 @@ export default function Login() {
     setSubmitting(true);
     try {
       const { profile } = await login(email, password);
-      if (profile?.role === "admin") {
+      if (!profile) {
+        await logout();
+        setError(
+          "No profile found for this account. Please sign up first or contact support."
+        );
+        return;
+      }
+      if (profile.role === "admin") {
         await logout();
         setError("Admins please log in at /admin/login.");
         return;
       }
-      if (profile?.active) navigate("/loans");
+      if (profile.active) navigate("/loans");
       else navigate("/pending");
     } catch (err) {
       setError(err.message || "Login failed. Check your credentials.");

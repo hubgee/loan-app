@@ -55,6 +55,12 @@ create policy "Users can read own" on public.users
 for select to authenticated
 using (id = auth.uid());
 
+-- Users insert own row (needed for admin bootstrap upsert)
+drop policy if exists "Users can insert own" on public.users;
+create policy "Users can insert own" on public.users
+for insert to authenticated
+with check (id = auth.uid());
+
 -- Admins read all users
 drop policy if exists "Admins can read users" on public.users;
 create policy "Admins can read users" on public.users

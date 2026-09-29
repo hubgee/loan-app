@@ -3,6 +3,9 @@ import { supabase } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
 
+// Designated admin email — set in Vercel env vars as VITE_ADMIN_EMAIL
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || null;
+
 async function fetchProfile(userId) {
   if (!userId) return null;
   const { data, error } = await supabase
@@ -12,6 +15,34 @@ async function fetchProfile(userId) {
     .single();
   if (error) {
     // Missing row (e.g. SQL migration not run yet) -> treat as inactive non-admin
+    return null;
+  }
+  return data;
+}
+
+// Auto-bootstrap: if the logged-in user's email matches VITE_ADMIN_EMAIL,
+// ensure they have an active admin profile in public.users.
+async function ensureAdminProfile(user) {
+  if (!user?.email || !ADMIN_EMAIL) return null;
+  if (user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return null;
+
+  // Try to upsert the admin profile
+  const { data, error } = await supabase
+    .from("users")
+    .upsert(
+      {
+        id: user.id,
+        email: user.email,
+        role: "admin",
+        active: true,
+      },
+      { onConflict: "id" }
+    )
+    .select("id, email, role, active")
+    .single();
+
+  if (error) {
+    console.error("Failed to bootstrap admin profile:", error);
     return null;
   }
   return data;
@@ -67,6 +98,14 @@ export function AuthProvider({ children }) {
       password,
     });
     if (error) throw error;
+
+    // Auto-bootstrap admin profile if this is the designated admin email
+    const adminProfile = await ensureAdminProfile(data.user);
+    if (adminProfile) {
+      setProfile(adminProfile);
+      return { user: data.user, profile: adminProfile };
+    }
+
     const p = await loadProfile(data.user);
     return { user: data.user, profile: p };
   };

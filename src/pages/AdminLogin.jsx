@@ -18,7 +18,14 @@ export default function AdminLogin() {
     setSubmitting(true);
     try {
       const { profile } = await login(email, password);
-      if (profile?.role !== "admin") {
+      if (!profile) {
+        await logout();
+        setError(
+          "No profile found for this account. Please contact support or try the borrower login at /login."
+        );
+        return;
+      }
+      if (profile.role !== "admin") {
         await logout();
         setError("Not an admin account. Borrowers please use /login.");
         return;
