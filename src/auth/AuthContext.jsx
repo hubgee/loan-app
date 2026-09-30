@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useCallback, useRef } from "react";
-import { supabase, setCachedSession } from "../api/supabaseClient";
+import { supabase } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
 
@@ -96,7 +96,6 @@ export function AuthProvider({ children }) {
         console.error("[auth] getSession error:", err.message);
       }
       if (!mounted) return;
-      setCachedSession(session);
       await loadProfile(session?.user ?? null);
       if (!mounted) return;
       setLoading(false);
@@ -110,7 +109,6 @@ export function AuthProvider({ children }) {
 
         // Reflect the session synchronously (no supabase calls while the
         // SDK holds its internal auth lock).
-        setCachedSession(session);
         setUser(u);
 
         if (!u) {
@@ -144,7 +142,6 @@ export function AuthProvider({ children }) {
       password,
     });
     if (error) throw error;
-    setCachedSession(data.session);
 
     // Promote to admin if email matches app_settings.admin_email. Runs
     // security-definer server-side (bypasses RLS) and returns the
@@ -181,7 +178,6 @@ export function AuthProvider({ children }) {
     // With "Auto Confirm User" on, a session is returned immediately and the
     // DB trigger has already created the inactive profile row.
     if (data.session?.user) {
-      setCachedSession(data.session);
       const p = await loadProfile(data.session.user);
       return { user: data.session.user, profile: p };
     }
@@ -201,7 +197,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("[auth] signOut failed, clearing local state anyway:", err.message);
     } finally {
-      setCachedSession(null);
+      // Always clear local state so the UI can never get stuck signed in.
       setUser(null);
       setProfile(null);
     }
