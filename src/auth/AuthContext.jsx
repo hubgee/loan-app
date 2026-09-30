@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "../api/supabaseClient";
+import { supabase, setCachedSession } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
 
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
       let p = preloadedProfile;
       if (!p) {
         try {
-          p = await withTimeout(fetchProfile(sessionUser.id), 8000, "fetchProfile");
+          p = await withTimeout(fetchProfile(sessionUser.id), 12000, "fetchProfile");
         } catch (err) {
           console.error("[auth] fetchProfile error:", err.message);
           p = null;
@@ -81,10 +81,23 @@ export function AuthProvider({ children }) {
 
     const setup = async () => {
       // 1) Restore the session FIRST, letting the auth client fully finish
-      //    its lock/refresh init while we await it.
-      const { data } = await supabase.auth.getSession();
+      //    its lock/refresh init while we await it. A timeout here is just
+      //    insurance — if the lock-based client is wedged, we surface the
+      //    login page instead of spinning on "Loading…" forever.
+      let session = null;
+      try {
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          8000,
+          "getSession"
+        );
+        session = data.session ?? null;
+      } catch (err) {
+        console.error("[auth] getSession error:", err.message);
+      }
       if (!mounted) return;
-      await loadProfile(data.session?.user ?? null);
+      setCachedSession(session);
+      await loadProfile(session?.user ?? null);
       if (!mounted) return;
       setLoading(false);
 
@@ -97,6 +110,7 @@ export function AuthProvider({ children }) {
 
         // Reflect the session synchronously (no supabase calls while the
         // SDK holds its internal auth lock).
+        setCachedSession(session);
         setUser(u);
 
         if (!u) {
@@ -130,6 +144,7 @@ export function AuthProvider({ children }) {
       password,
     });
     if (error) throw error;
+    setCachedSession(data.session);
 
     // Promote to admin if email matches app_settings.admin_email. Runs
     // security-definer server-side (bypasses RLS) and returns the
@@ -166,6 +181,7 @@ export function AuthProvider({ children }) {
     // With "Auto Confirm User" on, a session is returned immediately and the
     // DB trigger has already created the inactive profile row.
     if (data.session?.user) {
+      setCachedSession(data.session);
       const p = await loadProfile(data.session.user);
       return { user: data.session.user, profile: p };
     }
@@ -185,6 +201,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("[auth] signOut failed, clearing local state anyway:", err.message);
     } finally {
+      setCachedSession(null);
       setUser(null);
       setProfile(null);
     }
