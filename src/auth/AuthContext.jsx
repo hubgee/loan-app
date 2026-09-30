@@ -3,8 +3,9 @@ import { supabase } from "../api/supabaseClient";
 
 const AuthContext = createContext(null);
 
-// Guard against a request that never settles (network stalls, RLS hangs).
-// Without this a single hung call freezes the whole auth flow.
+// Guard against a request that never settles. supabase-js's lock-based auth
+// had documented deadlock/refresh-loop bugs; a hanging call must never be
+// able to freeze the auth flow.
 const withTimeout = (promise, ms, label) =>
   Promise.race([
     promise,
@@ -18,9 +19,9 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Monotonic token. Every profile read takes a ticket; a response is only
-  // allowed to write state if it still holds the newest ticket. Without this,
-  // a slow read issued before login()'s bootstrap can resolve AFTER it and
+  // Monotonic token. Every profile read takes a ticket; a response only
+  // writes state if it still holds the newest ticket. Without this a slow
+  // read issued before login()'s admin bootstrap can resolve AFTER it and
   // silently overwrite a fresh admin profile with a stale borrower one.
   const profileTicket = useRef(0);
 
@@ -51,10 +52,17 @@ export function AuthProvider({ children }) {
         return null;
       }
 
-      // Optimistically expose the session so the Navbar updates immediately.
       setUser(sessionUser);
 
-      const p = preloadedProfile ?? (await fetchProfile(sessionUser.id));
+      let p = preloadedProfile;
+      if (!p) {
+        try {
+          p = await withTimeout(fetchProfile(sessionUser.id), 8000, "fetchProfile");
+        } catch (err) {
+          console.error("[auth] fetchProfile error:", err.message);
+          p = null;
+        }
+      }
 
       // A newer read has started — this response is stale, drop it.
       if (ticket !== profileTicket.current) {
@@ -69,29 +77,50 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe;
 
-    // Initial session restore — safe, runs outside any auth lock.
-    supabase.auth.getSession().then(async ({ data }) => {
+    const setup = async () => {
+      // 1) Restore the session FIRST, letting the auth client fully finish
+      //    its lock/refresh init while we await it.
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
       await loadProfile(data.session?.user ?? null);
-      if (mounted) setLoading(false);
-    });
+      if (!mounted) return;
+      setLoading(false);
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      // CRITICAL: the auth client holds an internal lock while this callback
-      // runs. Awaiting any other Supabase call here deadlocks the app forever
-      // (symptoms: buttons stuck on "Verifying...", logout doing nothing).
-      // Defer the async work to the next tick so the lock is released first.
-      setTimeout(() => {
-        loadProfile(session?.user ?? null).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      }, 0);
-    });
+      // 2) Only NOW register the listener, after init is complete.
+      //    Registering onAuthStateChange during _initialize() is a documented
+      //    cause of deadlocks and refresh-token races ("sometimes the page
+      //    works, sometimes you get signed out").
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+        const u = session?.user ?? null;
+
+        // Reflect the session synchronously (no supabase calls while the
+        // SDK holds its internal auth lock).
+        setUser(u);
+
+        if (!u) {
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch the profile on the next tick, outside the auth lock, and let
+        // the ticket guard discard anything that races a login/bootstrap.
+        setTimeout(() => {
+          loadProfile(u).finally(() => {
+            if (mounted) setLoading(false);
+          });
+        }, 0);
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
+    };
+
+    setup();
 
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, [loadProfile]);
 
@@ -102,9 +131,9 @@ export function AuthProvider({ children }) {
     });
     if (error) throw error;
 
-    // Promote this account to admin if its email matches app_settings.admin_email.
-    // Runs security-definer server-side, so it bypasses RLS, and returns the
-    // authoritative profile row so we don't need a racy second read.
+    // Promote to admin if email matches app_settings.admin_email. Runs
+    // security-definer server-side (bypasses RLS) and returns the
+    // authoritative row so we don't need a second, racy read.
     let promoted = null;
     try {
       const { data: rpcData, error: rpcError } = await withTimeout(
@@ -141,7 +170,7 @@ export function AuthProvider({ children }) {
       return { user: data.session.user, profile: p };
     }
 
-    // Email confirmation required: no session yet, just report the pending user.
+    // Email confirmation required: no session yet.
     setUser(null);
     setProfile(null);
     return { user: data.user ?? null, profile: null };
@@ -156,7 +185,6 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("[auth] signOut failed, clearing local state anyway:", err.message);
     } finally {
-      // Always clear local state so the UI can never get stuck signed in.
       setUser(null);
       setProfile(null);
     }
