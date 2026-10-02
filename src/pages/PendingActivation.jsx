@@ -3,15 +3,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
 export default function PendingActivation() {
-  const { user, isAdmin, isActive, loading, refresh, logout } = useAuth();
+  const { user, isAdmin, isActive, status, refresh, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (loading) return;
+    if (status === "initializing" || status === "error") return;
     if (!user) navigate("/login");
     else if (isAdmin) navigate("/dashboard");
     else if (isActive) navigate("/loans");
-  }, [user, isAdmin, isActive, loading, navigate]);
+  }, [user, isAdmin, isActive, status, navigate]);
 
   const handleLogout = async () => {
     await logout();

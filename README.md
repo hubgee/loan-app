@@ -1,63 +1,87 @@
-# React + Vite
+# Kuwala Loans
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Vite + React SPA served as static files by Vercel. Supabase **is** the
+backend: GoTrue Auth, Postgres, RLS and Storage. There is no application
+server — the browser talks to Supabase directly through `@supabase/supabase-js`,
+and RLS is the security boundary.
 
-Currently, two official plugins are available:
+## Layout
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```
+src/
+  api/supabaseClient.js   Supabase singleton
+  auth/AuthContext.jsx    auth state machine (status/user/profile/authError)
+  auth/authDebug.js       opt-in VITE_AUTH_DEBUG logger
+  components/ProtectedRoute.jsx   route guard
+  pages/                  Landing, Login, Signup, PendingActivation,
+                          Dashboard (admin), UserManagement (admin),
+                          UserDashboard (borrower)
+supabase/
+  schema.sql              destructive, re-runnable; drop + recreate
+  seed-admin.sql          run once, by hand, to promote one admin
+```
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Supabase
 
-## Expanding the ESLint configuration
+1. Authentication → Settings → enable **Auto Confirm User** so signups get a
+   session immediately and land on `/pending`.
+2. Run `supabase/schema.sql` in the SQL Editor. It drops and recreates every
+   table, function, trigger and policy the app owns — **it is destructive by
+   design and safe to re-run.** There is no data migration; borrowers must
+   re-signup.
+3. Sign up the admin account through the app (`/signup`), then run
+   `supabase/seed-admin.sql` with that email substituted in. Admin is never
+   granted at login; there is no `app_settings` table and no client-callable
+   promotion RPC.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project).
+### 2. Environment variables
 
-## Deploying the frontend on Vercel (free plan)
+| Name                   | Value                                  |
+| ---------------------- | -------------------------------------- |
+| `VITE_SUPABASE_URL`    | `https://your-project.supabase.co`     |
+| `VITE_SUPABASE_ANON_KEY` | the anon **public** key              |
+| `VITE_AUTH_DEBUG`      | `true` to log auth events (optional)    |
 
-This repo is a Vite + React SPA that talks to a separate Laravel backend. The
-frontend only needs static hosting; the API is reached directly from the
-browser using the `VITE_API_URL` env var.
+Vite inlines `VITE_*` at **build** time. Changing a value in the Vercel
+dashboard requires a **redeploy**; saving alone does nothing.
 
-### 1. Push this repo to GitHub/GitLab/Bitbucket
+### 3. Vercel
 
-### 2. Create a new Vercel project (import the repo)
+Import the repo. `vercel.json` sets Framework Preset Vite, build command
+`npm run build`, output directory `dist`, and rewrites all routes to
+`/index.html` so hard refreshes on client-side routes resolve.
 
-Vercel auto-detects Vite from `vercel.json`. Confirm these settings:
+Set the environment variables above for **Production**, then deploy.
 
-- **Framework Preset:** Vite
-- **Build Command:** `npm run build`
-- **Output Directory:** `dist`
+## Roles
 
-### 3. Add the environment variable
+- Every signup gets `public.profiles` row `(role = 'borrower', is_active = false)`
+  via the `on_auth_user_created` trigger. Inactive borrowers can only reach
+  `/pending`.
+- An admin activates borrowers in `/admin/users`, which writes
+  `public.profiles.is_active` through the `admin_users()` RPC for listing
+  (it joins `auth.users` for the email) and the RLS update policy for the write.
+- Role and activation are properties the account *has*. They are never mutated
+  by client code at login.
 
-| Name           | Value                             |
-| -------------- | --------------------------------- |
-| `VITE_API_URL` | `https://your-backend-domain.com` |
+## Loan statuses
 
-The frontend appends `/api` and `/sanctum` to this origin automatically.
-Locally (no var set) it falls back to `/api`, which the Vite dev proxy forwards
-to `http://127.0.0.1:8000`.
+Lowercase: `pending`, `approved`, `repaid`.
 
-### 4. Backend CORS (required for cookie/session auth)
+## Auth model
 
-Set the following on the Laravel backend so it accepts requests from Vercel:
+`AuthContext` exposes an explicit state machine — `status` is one of
+`initializing`, `authenticated`, `anonymous`, `error`.
 
-- `FRONTEND_URL=https://your-vercel-app.vercel.app`
-- `SANCTUM_STATEFUL_DOMAINS=your-vercel-app.vercel.app`
-- `SESSION_DOMAIN=` (leave empty for cross-origin cookies, or set to the backend domain)
-- `APP_URL=https://your-backend-domain.com`
+`error` is **not** `anonymous`. A rate-limited or slow token refresh sets
+`authError` and leaves the session intact; `ProtectedRoute` renders
+`SessionRetryScreen` (message + Retry) for `error`, and only redirects to the
+login form for `anonymous`. This is deliberate: converting a recoverable 429
+into a sign-out costs more auth quota and produces a self-sustaining logout
+loop.
 
-`config/cors.php` already allows credentials and reads `FRONTEND_URL`, so the
-frontend can authenticate cross-origin with `withCredentials: true`.
-
-### 5. Deploy
-
-Click **Deploy**. After it builds, visit the URL. Client-side routes
-(e.g. `/dashboard`) are handled by the SPA rewrite in `vercel.json`.
-
-> Note: The free Vercel plan hosts only the frontend. The Laravel backend must
-> be hosted separately (e.g. Render, Railway, Fly.io) since Vercel cannot run
-> PHP.
+With `VITE_AUTH_DEBUG=true`, the console logs every auth event with a
+timestamp, the access token's `exp`, the gap between refresh attempts, and the
+status/message of any failure. Tokens are never logged.

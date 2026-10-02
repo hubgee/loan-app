@@ -106,14 +106,14 @@ export default function LoanForm({ onAddLoan }) {
           purpose: formData.purpose || null,
           national_id_path: path,
           national_id_original: file.name,
-          status: "Pending",
+          status: "pending",
           processed_by: null,
         })
         .select()
         .single();
       if (error) throw error;
 
-      onAddLoan({ ...formData, status: "Pending", id: data.id });
+      onAddLoan({ ...formData, status: "pending", id: data.id });
       setMessage("Application submitted successfully!");
       setFormData({
         name: "",

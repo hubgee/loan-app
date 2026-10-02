@@ -8,13 +8,13 @@ export default function UserManagement() {
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState(null);
 
-  const load = async () => {
+const load = async () => {
     setLoading(true);
     setError("");
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, email, role, active, created_at")
-      .order("created_at", { ascending: false });
+    // public.profiles has no email column — the list is assembled
+    // server-side by the SECURITY DEFINER admin_users() function, which
+    // joins auth.users and refuses non-admins.
+    const { data, error } = await supabase.rpc("admin_users");
     if (error) setError(error.message);
     else setUsers(data || []);
     setLoading(false);
@@ -29,17 +29,20 @@ export default function UserManagement() {
     setUpdating(u.id);
     setError("");
     const { error } = await supabase
-      .from("users")
-      .update({ active: !u.active })
+      .from("profiles")
+      .update({ is_active: !u.is_active })
       .eq("id", u.id);
     if (error) setError(error.message);
-    else setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, active: !x.active } : x)));
+    else
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, is_active: !u.is_active } : x))
+      );
     setUpdating(null);
   };
 
   const filtered = users.filter((u) => {
-    if (filter === "active") return u.active && u.role !== "admin";
-    if (filter === "pending") return !u.active;
+    if (filter === "active") return u.is_active && u.role !== "admin";
+    if (filter === "pending") return !u.is_active;
     if (filter === "admin") return u.role === "admin";
     return true;
   });
@@ -91,7 +94,9 @@ export default function UserManagement() {
               <tbody>
                 {filtered.map((u) => (
                   <tr key={u.id} className="border-b border-slate-100 last:border-0">
-                    <td className="p-3 font-medium text-slate-800">{u.email}</td>
+                    <td className="p-3 font-medium text-slate-800">
+                      {u.email ?? u.id}
+                    </td>
                     <td className="p-3">
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
@@ -106,12 +111,12 @@ export default function UserManagement() {
                     <td className="p-3">
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
-                          u.active
+                          u.is_active
                             ? "bg-green-100 text-green-700"
                             : "bg-amber-100 text-amber-700"
                         }`}
                       >
-                        {u.active ? "Active" : "Pending"}
+                        {u.is_active ? "Active" : "Pending"}
                       </span>
                     </td>
                     <td className="p-3 text-slate-500">
@@ -123,13 +128,13 @@ export default function UserManagement() {
                           disabled={updating === u.id}
                           onClick={() => toggleActive(u)}
                           className={`relative w-11 h-6 rounded-full transition-colors ${
-                            u.active ? "bg-green-600" : "bg-slate-300"
+                            u.is_active ? "bg-green-600" : "bg-slate-300"
                           } disabled:opacity-50`}
-                          title={u.active ? "Deactivate" : "Activate"}
+                          title={u.is_active ? "Deactivate" : "Activate"}
                         >
                           <span
                             className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${
-                              u.active ? "left-[22px]" : "left-0.5"
+                              u.is_active ? "left-[22px]" : "left-0.5"
                             }`}
                           />
                         </button>

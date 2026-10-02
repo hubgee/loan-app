@@ -1,23 +1,109 @@
 -- ============================================================
--- Kuwala Loans — Supabase backend (Vercel frontend + Supabase)
+-- Kuwala Loans — Supabase backend (Vercel static frontend + Supabase)
 -- Run this in: Supabase Dashboard -> SQL Editor -> New query -> Run
--- Safe to re-run (uses IF NOT EXISTS / DROP POLICY IF EXISTS).
+--
+-- DESTRUCTIVE AND RE-RUNNABLE BY DESIGN. It drops every table,
+-- function, trigger and policy this app owns, then recreates them.
+-- There is no data migration; re-signup is expected afterwards.
 -- ============================================================
 
 -- ----------------------------------------------------------------
--- 0) RLS helper functions
+-- 0) Drop everything this app owns, in dependency order
 -- ----------------------------------------------------------------
--- These MUST exist before any policy that needs to know "is the
--- current user an admin / an active borrower".
+-- Triggers on public.loan_applications / public.profiles go away with their
+-- tables below, so they are deliberately NOT dropped here: DROP TRIGGER IF
+-- EXISTS still errors with 42P01 when the relation itself is missing, which
+-- would abort this script on a fresh project.
+drop trigger if exists on_auth_user_created on auth.users;
+
+-- Tables first: dropping a table drops its RLS policies, and a policy holds a
+-- dependency on the helper functions. Dropping the functions before the tables
+-- would fail with "cannot drop function ... other objects depend on it".
+drop table if exists public.loan_applications cascade;
+drop table if exists public.users cascade;
+drop table if exists public.profiles cascade;
+drop table if exists public.app_settings cascade;
+
+-- The storage policies also depend on the helpers, so they go next.
+drop policy if exists "Borrowers can upload own ids" on storage.objects;
+drop policy if exists "Admins can read ids" on storage.objects;
+
+-- admin_users() calls is_admin(), so it is dropped before it.
+drop function if exists public.admin_users();
+drop function if exists public.bootstrap_admin_profile();
+drop function if exists public.handle_new_user();
+drop function if exists public.set_updated_at();
+drop function if exists public.is_admin();
+drop function if exists public.is_active_user();
+
+-- ----------------------------------------------------------------
+-- 1) Table: public.profiles
+--    Renamed from `users` so it is never confused with auth.users.
+--    `email` is deliberately absent: it is redundant with auth.users
+--    and drifted every time an admin changed an address. The UI reads
+--    the email off the auth session; admins list emails through
+--    public.admin_users() below, which joins auth.users server-side.
+-- ----------------------------------------------------------------
+create table public.profiles (
+  id         uuid primary key references auth.users(id) on delete cascade,
+  role       text not null default 'borrower' check (role in ('borrower','admin')),
+  is_active  boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+create index if not exists profiles_role_idx on public.profiles (role);
+
+-- ----------------------------------------------------------------
+-- 2) Table: public.loan_applications
+--    Column set is exactly what the UI reads. `updated_at` is new so
+--    a status change is auditable. Status is lowercase to match role.
+-- ----------------------------------------------------------------
+create table public.loan_applications (
+  id                   bigint generated always as identity primary key,
+  borrower_name        text not null,
+  email                text,
+  phone                text,
+  amount               numeric(12,2) not null,
+  duration             text not null default '1_week',
+  interest_rate        numeric(5,4) not null default 0.15,
+  interest_amount      numeric(12,2) not null default 0,
+  total_repayment      numeric(12,2) not null default 0,
+  repayment_date       date,
+  purpose              text,
+  national_id_path     text,
+  national_id_original text,
+  status               text not null default 'pending'
+                        check (status in ('pending','approved','repaid')),
+  processed_by         uuid,
+  user_id              uuid references public.profiles(id) on delete set null,
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create index if not exists loan_applications_status_idx
+  on public.loan_applications (status);
+
+create index if not exists loan_applications_user_id_idx
+  on public.loan_applications (user_id);
+
+-- ----------------------------------------------------------------
+-- 3) RLS helper functions
+--    These MUST exist before any policy that needs to know "is the
+--    current user an admin / an active borrower".
 --
--- Why a function instead of an inline subquery?
--- A policy like `exists (select 1 from public.users ...)` written
--- directly ON public.users re-triggers public.users' own RLS while
--- Postgres is still evaluating it -> "infinite recursion detected in
--- policy for relation users" and the whole query fails.
+--    Why a function instead of an inline subquery?
+--    A policy like `exists (select 1 from public.profiles ...)`
+--    written directly ON public.profiles re-triggers that table's own
+--    RLS while Postgres is still evaluating it -> "infinite recursion
+--    detected in policy for relation profiles" and the query fails.
 --
--- SECURITY DEFINER makes the function run as the table owner, which
--- BYPASSES RLS, so the recursion never happens.
+--    SECURITY DEFINER makes the function run as the table owner, which
+--    BYPASSES RLS, so the recursion never happens. Keep them as
+--    functions — do not inline them.
+-- ----------------------------------------------------------------
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -27,9 +113,9 @@ set search_path = public
 as $$
   select exists (
     select 1
-    from public.users u
-    where u.id = auth.uid()
-      and u.role = 'admin'
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role = 'admin'
   );
 $$;
 
@@ -42,178 +128,77 @@ set search_path = public
 as $$
   select exists (
     select 1
-    from public.users u
-    where u.id = auth.uid()
-      and u.active = true
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.is_active = true
   );
 $$;
 
-grant execute on function public.is_admin() to authenticated, anon, service_role;
-grant execute on function public.is_active_user() to authenticated, anon, service_role;
+-- Grants: authenticated only. The old schema also granted these to
+-- `anon`, which has no business calling them.
+revoke execute on function public.is_admin() from public;
+revoke execute on function public.is_active_user() from public;
+grant execute on function public.is_admin() to authenticated, service_role;
+grant execute on function public.is_active_user() to authenticated, service_role;
 
 -- ----------------------------------------------------------------
--- 1) Table: users — single source of truth for role + activation
---    Created BEFORE loan_applications because the FK below needs it.
+-- 4) Admin user listing
+--    public.profiles has no email column, so the admin user-management
+--    screen cannot read addresses from it. This SECURITY DEFINER
+--    function joins auth.users for the email and gates itself on
+--    public.is_admin() — the anon key cannot use it.
 -- ----------------------------------------------------------------
-create table if not exists public.users (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  email      text not null,
-  role       text not null check (role in ('user','admin')) default 'user',
-  active     boolean not null default false,
-  created_at timestamptz not null default now()
-);
+create or replace function public.admin_users()
+returns table (
+  id         uuid,
+  email      text,
+  role       text,
+  is_active  boolean,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public, auth
+as $$
+  select p.id, u.email, p.role, p.is_active, p.created_at
+  from public.profiles p
+  join auth.users u on u.id = p.id
+  where public.is_admin()
+  order by p.created_at desc
+$$;
 
-alter table public.users enable row level security;
+revoke execute on function public.admin_users() from public;
+grant execute on function public.admin_users() to authenticated, service_role;
 
-drop policy if exists "Users can read own" on public.users;
-create policy "Users can read own" on public.users
+-- ----------------------------------------------------------------
+-- 5) RLS: public.profiles
+-- ----------------------------------------------------------------
+drop policy if exists "Users can read own" on public.profiles;
+create policy "Users can read own" on public.profiles
   for select to authenticated
   using (id = auth.uid());
 
-drop policy if exists "Users can insert own" on public.users;
-create policy "Users can insert own" on public.users
+drop policy if exists "Users can insert own" on public.profiles;
+create policy "Users can insert own" on public.profiles
   for insert to authenticated
   with check (id = auth.uid());
 
 -- Uses is_admin() instead of an inline subquery to avoid recursion.
-drop policy if exists "Admins can read users" on public.users;
-create policy "Admins can read users" on public.users
+drop policy if exists "Admins can read profiles" on public.profiles;
+create policy "Admins can read profiles" on public.profiles
   for select to authenticated
   using (public.is_admin());
 
-drop policy if exists "Admins can update users" on public.users;
-create policy "Admins can update users" on public.users
+drop policy if exists "Admins can update profiles" on public.profiles;
+create policy "Admins can update profiles" on public.profiles
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
 -- ----------------------------------------------------------------
--- 2) Table: loan_applications
+-- 6) RLS: public.loan_applications
 -- ----------------------------------------------------------------
-create table if not exists public.loan_applications (
-  id                   bigint generated always as identity primary key,
-  borrower_name        text not null,
-  email                text,
-  phone                text,
-  amount               numeric(12,2) not null,
-  purpose              text,
-  national_id_path     text,
-  national_id_original text,
-  status               text not null default 'Pending'
-                       check (status in ('Pending','Approved','Repaid')),
-  processed_by         uuid,
-  created_at           timestamptz not null default now()
-);
-
-create index if not exists loan_applications_status_idx
-  on public.loan_applications (status);
-
-alter table public.loan_applications
-  add column if not exists duration text not null default '1_week',
-  add column if not exists interest_rate numeric(5,4) not null default 0.15,
-  add column if not exists interest_amount numeric(12,2) not null default 0,
-  add column if not exists total_repayment numeric(12,2) not null default 0,
-  add column if not exists repayment_date date;
-
--- Borrower attribution (added after public.users now exists)
-alter table public.loan_applications
-  add column if not exists user_id uuid references public.users(id) on delete set null;
-
-create index if not exists loan_applications_user_id_idx
-  on public.loan_applications (user_id);
-
--- ----------------------------------------------------------------
--- 3) App settings (stores the designated admin email)
---    RLS is enabled with NO policies on purpose: the only reader is the
---    SECURITY DEFINER function below, so the anon key cannot list it.
--- ----------------------------------------------------------------
-create table if not exists public.app_settings (
-  key   text primary key,
-  value text not null
-);
-
-alter table public.app_settings enable row level security;
-
--- ----------------------------------------------------------------
--- 4) Trigger: auto-create inactive user row on signup
--- ----------------------------------------------------------------
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.users (id, email, role, active)
-  values (new.id, new.email, 'user', false)
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-
--- ----------------------------------------------------------------
--- 5) Admin bootstrap RPC (called by the frontend right after login)
---    Promotes the account to admin if its email matches app_settings.
--- ----------------------------------------------------------------
-create or replace function public.bootstrap_admin_profile()
-returns jsonb
-language plpgsql
-security definer
-set search_path = public, auth
-as $$
-declare
-  admin_email text;
-  user_email  text;
-  result      jsonb;
-begin
-  select value into admin_email
-    from public.app_settings
-   where key = 'admin_email';
-
-  if admin_email is null or admin_email = '' then
-    return null;
-  end if;
-
-  select email into user_email
-    from auth.users
-   where id = auth.uid();
-
-  if user_email is null or lower(user_email) <> lower(admin_email) then
-    return null;
-  end if;
-
-  insert into public.users (id, email, role, active)
-  values (auth.uid(), user_email, 'admin', true)
-  on conflict (id) do update
-    set role = 'admin', active = true, email = excluded.email;
-
-  -- Return the authoritative row so the client never has to re-read it
-  -- (a second read could race the onAuthStateChange fetch and lose).
-  select to_jsonb(u) into result
-    from public.users u
-   where u.id = auth.uid();
-
-  return result;
-end;
-$$;
-
-grant execute on function public.bootstrap_admin_profile() to authenticated, anon, service_role;
-
--- ----------------------------------------------------------------
--- 6) Storage bucket for uploaded National IDs (private)
--- ----------------------------------------------------------------
-insert into storage.buckets (id, name, public)
-values ('ids', 'ids', false)
-on conflict (id) do nothing;
-
--- ============================================================
--- Row Level Security: loan_applications
--- ============================================================
 alter table public.loan_applications enable row level security;
 
 drop policy if exists "Borrowers can submit own applications" on public.loan_applications;
@@ -248,6 +233,63 @@ create policy "Admins can update applications"
   using (public.is_admin())
   with check (public.is_admin());
 
+-- ----------------------------------------------------------------
+-- 7) Triggers
+-- ----------------------------------------------------------------
+-- Signup: every new auth user gets an inactive borrower profile.
+-- Nothing here can produce an admin — role is only ever set by hand,
+-- via supabase/seed-admin.sql.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, role, is_active)
+  values (new.id, 'borrower', false)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+revoke execute on function public.handle_new_user() from public;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- updated_at maintenance
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+revoke execute on function public.set_updated_at() from public;
+
+drop trigger if exists set_profiles_updated_at on public.profiles;
+create trigger set_profiles_updated_at
+  before update on public.profiles
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists set_loan_applications_updated_at on public.loan_applications;
+create trigger set_loan_applications_updated_at
+  before update on public.loan_applications
+  for each row execute function public.set_updated_at();
+
+-- ----------------------------------------------------------------
+-- 8) Storage bucket for uploaded National IDs (private)
+-- ----------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('ids', 'ids', false)
+on conflict (id) do nothing;
+
 -- ============================================================
 -- Storage RLS for the 'ids' bucket
 -- NOTE: storage.objects already has RLS enabled by Supabase.
@@ -275,17 +317,19 @@ create policy "Admins can read ids"
   );
 
 -- ============================================================
--- SETUP (Supabase Dashboard, one time)
+-- SETUP (Supabase Dashboard)
 -- ============================================================
 -- 1. Authentication -> Settings -> enable "Auto Confirm User"
 --    (so signups get a session immediately and land on /pending).
 -- 2. Run this whole file in SQL Editor.
--- 3. Set the admin email (must match the Supabase auth user's email):
---      insert into public.app_settings (key, value)
---      values ('admin_email', 'your-admin-email@example.com')
---      on conflict (key) do update set value = excluded.value;
+-- 3. Promote the admin account by hand — run supabase/seed-admin.sql
+--    with the admin's email substituted. There is no login-time admin
+--    promotion and no app_settings table any more.
 -- 4. Vercel -> Project -> Settings -> Environment Variables:
 --      VITE_SUPABASE_URL=https://your-project.supabase.co
 --      VITE_SUPABASE_ANON_KEY=<anon public key>
---    then Redeploy. Admin login lives at /admin/login (unlinked, private).
+--      VITE_AUTH_DEBUG=true            (optional; auth event logging)
+--    Vite inlines VITE_* AT BUILD TIME. Saving an env var is not
+--    enough — a change requires a REDEPLOY.
+-- 5. Admin login lives at /admin/login (unlinked from the public UI).
 -- ============================================================

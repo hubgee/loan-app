@@ -31,7 +31,7 @@ export default function AdminLogin() {
         );
       } else {
         setError(
-          "This account is registered as a borrower, not an admin. Ask your developer to run in Supabase: insert into public.app_settings (key, value) values ('admin_email', 'your-email@example.com') on conflict (key) do update set value = excluded.value;"
+          "This account is registered as a borrower, not an admin. Admin is granted once by hand — ask your developer to run supabase/seed-admin.sql with this email."
         );
       }
     } catch (err) {

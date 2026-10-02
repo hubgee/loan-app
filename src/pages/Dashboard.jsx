@@ -41,9 +41,9 @@ export default function Dashboard() {
       setLoans(applications);
       setStats({
         total: applications.length,
-        pending: applications.filter((l) => l.status === "Pending").length,
-        approved: applications.filter((l) => l.status === "Approved").length,
-        repaid: applications.filter((l) => l.status === "Repaid").length,
+        pending: applications.filter((l) => l.status === "pending").length,
+        approved: applications.filter((l) => l.status === "approved").length,
+        repaid: applications.filter((l) => l.status === "repaid").length,
       });
     } catch (err) {
       console.error("Failed to load loans", err);

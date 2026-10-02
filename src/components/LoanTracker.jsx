@@ -9,22 +9,28 @@ const DURATION_LABELS = {
 };
 
 const STATUS_STYLES = {
-  Pending: "bg-amber-100 text-amber-700",
-  Approved: "bg-green-100 text-green-700",
-  Repaid: "bg-indigo-100 text-indigo-700",
+  pending: "bg-amber-100 text-amber-700",
+  approved: "bg-green-100 text-green-700",
+  repaid: "bg-indigo-100 text-indigo-700",
 };
 
 const STATUS_PROGRESS = {
-  Pending: "25%",
-  Approved: "75%",
-  Repaid: "100%",
+  pending: "25%",
+  approved: "75%",
+  repaid: "100%",
+};
+
+const STATUS_LABELS = {
+  pending: "Pending",
+  approved: "Approved",
+  repaid: "Repaid",
 };
 
 export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("all");
 
   const filteredLoans =
-    filter === "All" ? loans : loans.filter((loan) => loan.status === filter);
+    filter === "all" ? loans : loans.filter((loan) => loan.status === filter);
 
   return (
     <div className="space-y-4 mt-6">
@@ -32,7 +38,7 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
 
       {/* Filter buttons */}
       <div className="flex gap-2 flex-wrap">
-        {["All", "Pending", "Approved", "Repaid"].map((status) => (
+        {["all", "pending", "approved", "repaid"].map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
@@ -42,7 +48,7 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
                 : "bg-slate-200 text-slate-700"
             }`}
           >
-            {status}
+            {status === "all" ? "All" : STATUS_LABELS[status]}
           </button>
         ))}
       </div>
@@ -90,9 +96,9 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
                   }
                   className="border border-slate-200 rounded px-2 py-1 text-sm"
                 >
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Repaid">Repaid</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="repaid">Repaid</option>
                 </select>
               ) : (
                 <span
@@ -100,7 +106,7 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
                     STATUS_STYLES[loan.status] ?? "bg-slate-100 text-slate-600"
                   }`}
                 >
-                  {loan.status}
+                  {STATUS_LABELS[loan.status] ?? loan.status}
                 </span>
               )}
             </div>

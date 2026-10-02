@@ -1,5 +1,14 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
+import SessionRetryScreen from "./SessionRetryScreen";
+
+function FullPageSpinner() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <p className="text-slate-600">Loading...</p>
+    </div>
+  );
+}
 
 export default function ProtectedRoute({
   children,
@@ -7,17 +16,22 @@ export default function ProtectedRoute({
   requireActive = false,
   loginRedirect = "/login",
 }) {
-  const { user, isAdmin, isActive, loading } = useAuth();
+  const { status, authError, isAdmin, isActive, retryAuth } = useAuth();
 
-  if (loading) {
+  // Branch order is the whole fix. `error` must be evaluated BEFORE
+  // `anonymous`, otherwise a failed session check still redirects to the
+  // login form and the rate-limit -> logout loop is unchanged.
+  if (status === "initializing") {
+    return <FullPageSpinner />;
+  }
+
+  if (status === "error") {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-600">Loading...</p>
-      </div>
+      <SessionRetryScreen message={authError} onRetry={retryAuth} />
     );
   }
 
-  if (!user) {
+  if (status === "anonymous") {
     return <Navigate to={loginRedirect} replace />;
   }
 
@@ -27,7 +41,7 @@ export default function ProtectedRoute({
     return <Navigate to={isActive ? "/loans" : "/pending"} replace />;
   }
 
-  if (role === "user" && isAdmin) {
+  if (role === "borrower" && isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -18,7 +18,7 @@ export default function Login() {
       const { profile } = await login(email, password);
       if (profile?.role === "admin") {
         setError("Admins please log in at /admin/login.");
-      } else if (profile?.active) {
+      } else if (profile?.is_active) {
         navigate("/loans");
       } else {
         navigate("/pending");
