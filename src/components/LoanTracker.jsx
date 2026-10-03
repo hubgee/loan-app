@@ -26,6 +26,24 @@ const STATUS_LABELS = {
   repaid: "Repaid",
 };
 
+const PAYOUT_PROVIDER_LABELS = {
+  airtel_money: "Airtel Money",
+  tnm_mpamba: "TNM Mpamba",
+  fdh: "FDH Bank",
+  national_bank: "National Bank of Malawi",
+  standard_bank: "Standard Bank",
+};
+
+function payoutSummary(loan) {
+  if (!loan?.payout_method) return null;
+  const provider =
+    PAYOUT_PROVIDER_LABELS[loan.payout_provider] ?? loan.payout_provider;
+  if (loan.payout_method === "mobile_money") {
+    return `${provider} • ${loan.payout_account_number ?? ""} (${loan.payout_account_name ?? ""})`;
+  }
+  return `${provider} • Acct ${loan.payout_account_number ?? ""} (${loan.payout_account_name ?? ""})${loan.payout_branch ? ` • ${loan.payout_branch}` : ""}`;
+}
+
 export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
   const [filter, setFilter] = useState("all");
 
@@ -84,6 +102,16 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
 
             {/* Repayment date */}
             <p className="text-slate-600">Due: {loan.repayment_date}</p>
+
+            {/* Payout / disbursement details */}
+            {loan.payout_method && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+                <p className="font-medium text-slate-700">
+                  {loan.payout_method === "bank" ? "🏦 Bank payout" : "📱 Mobile money payout"}
+                </p>
+                <p className="text-slate-600">{payoutSummary(loan)}</p>
+              </div>
+            )}
 
             {/* Status: badge for borrowers, dropdown for admins */}
             <div className="flex items-center gap-2">

@@ -75,6 +75,11 @@ create table public.loan_applications (
   purpose              text,
   national_id_path     text,
   national_id_original text,
+  payout_method        text check (payout_method in ('mobile_money','bank')),
+  payout_provider      text check (payout_provider in ('airtel_money','tnm_mpamba','fdh','national_bank','standard_bank')),
+  payout_account_name  text,
+  payout_account_number text,
+  payout_branch        text,
   status               text not null default 'pending'
                         check (status in ('pending','approved','repaid')),
   processed_by         uuid,

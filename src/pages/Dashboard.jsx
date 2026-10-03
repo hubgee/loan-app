@@ -36,6 +36,11 @@ export default function Dashboard() {
         repayment_date: l.repayment_date,
         purpose: l.purpose,
         status: l.status,
+        payout_method: l.payout_method,
+        payout_provider: l.payout_provider,
+        payout_account_name: l.payout_account_name,
+        payout_account_number: l.payout_account_number,
+        payout_branch: l.payout_branch,
       }));
 
       setLoans(applications);
