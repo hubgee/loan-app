@@ -26,6 +26,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
   const [tab, setTab] = useState(initialTab === "loans" ? "loans" : "apply");
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeLoan, setActiveLoan] = useState(null);
 
   const load = async () => {
     if (!user) return;
@@ -36,6 +37,16 @@ export default function UserDashboard({ initialTab = "apply" }) {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (!error) setLoans((data || []).map(mapRow));
+
+    // Check for active loan (pending or approved)
+    const { data: active } = await supabase
+      .from("loan_applications")
+      .select("id, status")
+      .eq("user_id", user.id)
+      .in("status", ["pending", "approved"])
+      .maybeSingle();
+
+    setActiveLoan(active);
     setLoading(false);
   };
 
@@ -65,24 +76,59 @@ export default function UserDashboard({ initialTab = "apply" }) {
           {[
             { key: "apply", label: "Apply" },
             { key: "loans", label: "My Loans" },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                tab === t.key
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-slate-700 border border-slate-200"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+          ].map((t) => {
+            const disabled = t.key === "apply" && activeLoan;
+            return (
+              <button
+                key={t.key}
+                onClick={() => {
+                  if (disabled) return;
+                  setTab(t.key);
+                }}
+                disabled={disabled}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  tab === t.key
+                    ? "bg-indigo-600 text-white"
+                    : disabled
+                    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                }`}
+                title={
+                  disabled
+                    ? activeLoan.status === "pending"
+                      ? "Repay your pending loan to apply for another"
+                      : "Repay your active loan to apply for another"
+                    : undefined
+                }
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
         {tab === "apply" ? (
           <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
-            <LoanForm onAddLoan={handleNewLoan} />
+            {activeLoan ? (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-3">📋</div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                  {activeLoan.status === "pending"
+                    ? "Loan Pending Approval"
+                    : "Active Loan"}
+                </h3>
+                <p className="text-slate-600 mb-4 max-w-md mx-auto">
+                  {activeLoan.status === "pending"
+                    ? "Your loan application is currently under review. Once approved and repaid, you'll be eligible to apply for a new loan with an increased limit."
+                    : "You have an active loan that needs to be repaid first. Timely repayment builds your creditworthiness and unlocks higher loan limits for future applications."}
+                </p>
+                <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-600">
+                  <p className="font-medium">Current status: {activeLoan.status === "pending" ? "Pending approval" : "Active — repayment required"}</p>
+                </div>
+              </div>
+            ) : (
+              <LoanForm onAddLoan={handleNewLoan} />
+            )}
           </div>
         ) : loading ? (
           <p className="text-slate-500">Loading your loans...</p>
@@ -101,9 +147,17 @@ export default function UserDashboard({ initialTab = "apply" }) {
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50">
         <button
-          onClick={() => setTab("apply")}
+          onClick={() => {
+            if (activeLoan) return;
+            setTab("apply");
+          }}
+          disabled={activeLoan}
           className={`px-4 py-2 text-sm font-medium ${
-            tab === "apply" ? "text-indigo-600" : "text-slate-500"
+            tab === "apply"
+              ? "text-indigo-600"
+              : activeLoan
+              ? "text-slate-400"
+              : "text-slate-500"
           }`}
         >
           📝 Apply

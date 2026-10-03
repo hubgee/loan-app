@@ -79,6 +79,21 @@ export default function LoanForm({ onAddLoan }) {
       return;
     }
 
+    const { data: activeLoan } = await supabase
+      .from("loan_applications")
+      .select("id, status")
+      .eq("user_id", user.id)
+      .in("status", ["pending", "approved"])
+      .maybeSingle();
+
+    if (activeLoan) {
+      const statusMsg = activeLoan.status === "pending" ? "pending approval" : "active";
+      setMessage(
+        `You already have a ${statusMsg} loan. Please repay it before applying for a new one.`
+      );
+      return;
+    }
+
     setSubmitting(true);
     setMessage("");
     try {

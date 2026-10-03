@@ -89,6 +89,10 @@ create index if not exists loan_applications_status_idx
 create index if not exists loan_applications_user_id_idx
   on public.loan_applications (user_id);
 
+create unique index if not exists loan_applications_one_active_per_user
+  on public.loan_applications (user_id)
+  where status in ('pending', 'approved');
+
 -- ----------------------------------------------------------------
 -- 3) RLS helper functions
 --    These MUST exist before any policy that needs to know "is the
