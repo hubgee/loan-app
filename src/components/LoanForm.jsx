@@ -227,7 +227,7 @@ export default function LoanForm({ onAddLoan }) {
       .from("loan_applications")
       .select("id, status")
       .eq("user_id", user.id)
-      .in("status", ["pending", "approved"])
+      .in("status", ["pending", "approved", "confirmed", "edit_requested"])
       .maybeSingle();
 
     if (activeLoan) {

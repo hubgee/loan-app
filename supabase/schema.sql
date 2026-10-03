@@ -19,6 +19,7 @@ drop trigger if exists on_auth_user_created on auth.users;
 -- Tables first: dropping a table drops its RLS policies, and a policy holds a
 -- dependency on the helper functions. Dropping the functions before the tables
 -- would fail with "cannot drop function ... other objects depend on it".
+drop table if exists public.loan_events cascade;
 drop table if exists public.loan_applications cascade;
 drop table if exists public.users cascade;
 drop table if exists public.profiles cascade;
@@ -80,8 +81,11 @@ create table public.loan_applications (
   payout_account_name  text,
   payout_account_number text,
   payout_branch        text,
+  borrower_message     text,
+  borrower_decided_at  timestamptz,
+  admin_seen           boolean not null default false,
   status               text not null default 'pending'
-                        check (status in ('pending','approved','repaid')),
+                        check (status in ('pending','approved','confirmed','edit_requested','cancelled','repaid')),
   processed_by         uuid,
   user_id              uuid references public.profiles(id) on delete set null,
   created_at           timestamptz not null default now(),
@@ -96,7 +100,7 @@ create index if not exists loan_applications_user_id_idx
 
 create unique index if not exists loan_applications_one_active_per_user
   on public.loan_applications (user_id)
-  where status in ('pending', 'approved');
+  where status in ('pending', 'approved', 'confirmed', 'edit_requested');
 
 -- ----------------------------------------------------------------
 -- 3) RLS helper functions
@@ -241,6 +245,82 @@ create policy "Admins can update applications"
   for update to authenticated
   using (public.is_admin())
   with check (public.is_admin());
+
+-- Borrower decisions: confirm / request edit / cancel.
+-- Allowed ONLY from approved, and ONLY into the three borrower targets.
+-- This prevents a borrower ever marking themselves repaid or
+-- re-opening a closed loan. Field edits (amount, payout, etc.) ride
+-- on the same UPDATE when moving to edit_requested.
+drop policy if exists "Borrowers can respond to approved loans" on public.loan_applications;
+create policy "Borrowers can respond to approved loans"
+  on public.loan_applications
+  for update to authenticated
+  using (
+    user_id = auth.uid()
+    and status = 'approved'
+    and public.is_active_user()
+  )
+  with check (
+    user_id = auth.uid()
+    and status in ('confirmed','edit_requested','cancelled')
+  );
+
+-- ----------------------------------------------------------------
+-- 6b) Table + RLS: public.loan_events (append-only audit trail)
+-- ----------------------------------------------------------------
+create table if not exists public.loan_events (
+  id          bigint generated always as identity primary key,
+  loan_id     bigint not null references public.loan_applications(id) on delete cascade,
+  actor_role  text not null check (actor_role in ('borrower','admin')),
+  actor_id    uuid,
+  action      text not null,
+  from_status text,
+  to_status   text,
+  message     text,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists loan_events_loan_id_idx
+  on public.loan_events (loan_id, created_at desc);
+
+alter table public.loan_events enable row level security;
+
+drop policy if exists "Borrowers can read own loan events" on public.loan_events;
+create policy "Borrowers can read own loan events"
+  on public.loan_events
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.loan_applications l
+      where l.id = loan_events.loan_id
+        and l.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Borrowers can insert own loan events" on public.loan_events;
+create policy "Borrowers can insert own loan events"
+  on public.loan_events
+  for insert to authenticated
+  with check (
+    actor_role = 'borrower'
+    and exists (
+      select 1 from public.loan_applications l
+      where l.id = loan_events.loan_id
+        and l.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Admins can read loan events" on public.loan_events;
+create policy "Admins can read loan events"
+  on public.loan_events
+  for select to authenticated
+  using (public.is_admin());
+
+drop policy if exists "Admins can insert loan events" on public.loan_events;
+create policy "Admins can insert loan events"
+  on public.loan_events
+  for insert to authenticated
+  with check (public.is_admin() and actor_role = 'admin');
 
 -- ----------------------------------------------------------------
 -- 7) Triggers

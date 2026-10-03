@@ -1,6 +1,7 @@
 // src/components/LoanTracker.jsx
 
 import { useState } from "react";
+import LoanTimeline from "./LoanTimeline";
 
 const DURATION_LABELS = {
   "1_week": "1 Week",
@@ -8,21 +9,30 @@ const DURATION_LABELS = {
   "1_month": "1 Month",
 };
 
-const STATUS_STYLES = {
+export const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
   approved: "bg-green-100 text-green-700",
+  confirmed: "bg-blue-100 text-blue-700",
+  edit_requested: "bg-orange-100 text-orange-700",
+  cancelled: "bg-slate-200 text-slate-600",
   repaid: "bg-indigo-100 text-indigo-700",
 };
 
-const STATUS_PROGRESS = {
-  pending: "25%",
-  approved: "75%",
+export const STATUS_PROGRESS = {
+  pending: "20%",
+  approved: "50%",
+  confirmed: "75%",
+  edit_requested: "60%",
+  cancelled: "100%",
   repaid: "100%",
 };
 
-const STATUS_LABELS = {
+export const STATUS_LABELS = {
   pending: "Pending",
   approved: "Approved",
+  confirmed: "Confirmed",
+  edit_requested: "Edit requested",
+  cancelled: "Cancelled",
   repaid: "Repaid",
 };
 
@@ -44,9 +54,16 @@ function payoutSummary(loan) {
   return `${provider} • Acct ${loan.payout_account_number ?? ""} (${loan.payout_account_name ?? ""})${loan.payout_branch ? ` • ${loan.payout_branch}` : ""}`;
 }
 
-export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
+export default function LoanTracker({
+  loans,
+  onUpdateLoan,
+  onAdminAction,
+  editable = true,
+  showTimeline = false,
+}) {
   const [filter, setFilter] = useState("all");
 
+  const filters = ["all", "pending", "approved", "confirmed", "edit_requested", "cancelled", "repaid"];
   const filteredLoans =
     filter === "all" ? loans : loans.filter((loan) => loan.status === filter);
 
@@ -56,7 +73,7 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
 
       {/* Filter buttons */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "pending", "approved", "repaid"].map((status) => (
+        {filters.map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
@@ -66,7 +83,10 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
                 : "bg-slate-200 text-slate-700"
             }`}
           >
-            {status === "all" ? "All" : STATUS_LABELS[status]}
+            {status === "all" ? "All" : STATUS_LABELS[status] ?? status}
+            {status === "edit_requested" &&
+              loans.some((l) => l.status === "edit_requested" && l.admin_seen === false) &&
+              " •"}
           </button>
         ))}
       </div>
@@ -79,31 +99,27 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
             key={loan.id ?? `${loan.name}-${loan.amount}`}
             className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-2"
           >
-            {/* Borrower name */}
-            <p className="font-semibold text-slate-800">
-              {loan.name ?? loan.borrower_name}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-slate-800">
+                {loan.name ?? loan.borrower_name}
+              </p>
+              {loan.admin_seen === false && (
+                <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 font-medium">
+                  ● Needs review
+                </span>
+              )}
+            </div>
 
-            {/* Loan amount */}
             <p className="text-slate-600">Amount: Mkw {loan.amount}</p>
-
-            {/* Duration */}
             <p className="text-slate-600">
               Duration: {DURATION_LABELS[loan.duration] || loan.duration}
             </p>
-
-            {/* Interest */}
             <p className="text-slate-600">Interest: Mkw {loan.interest_amount}</p>
-
-            {/* Total repayment */}
             <p className="text-slate-600">
               Total repayment: Mkw {loan.total_repayment}
             </p>
-
-            {/* Repayment date */}
             <p className="text-slate-600">Due: {loan.repayment_date}</p>
 
-            {/* Payout / disbursement details */}
             {loan.payout_method && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
                 <p className="font-medium text-slate-700">
@@ -113,8 +129,14 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
               </div>
             )}
 
-            {/* Status: badge for borrowers, dropdown for admins */}
-            <div className="flex items-center gap-2">
+            {loan.borrower_message && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5 text-sm">
+                <p className="font-medium text-orange-800">Borrower note:</p>
+                <p className="text-orange-900">“{loan.borrower_message}”</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-slate-600">Status:</span>
               {editable && onUpdateLoan ? (
                 <select
@@ -126,6 +148,9 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
                 >
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="edit_requested">Edit requested</option>
+                  <option value="cancelled">Cancelled</option>
                   <option value="repaid">Repaid</option>
                 </select>
               ) : (
@@ -137,15 +162,45 @@ export default function LoanTracker({ loans, onUpdateLoan, editable = true }) {
                   {STATUS_LABELS[loan.status] ?? loan.status}
                 </span>
               )}
+              {onAdminAction && (
+                <span className="flex gap-2 flex-wrap">
+                  {loan.status === "pending" && (
+                    <button onClick={() => onAdminAction("approve", loan)} className="px-3 py-1 rounded-full text-xs bg-green-600 text-white">
+                      Approve
+                    </button>
+                  )}
+                  {loan.status === "confirmed" && (
+                    <button onClick={() => onAdminAction("repaid", loan)} className="px-3 py-1 rounded-full text-xs bg-indigo-600 text-white">
+                      Mark repaid
+                    </button>
+                  )}
+                  {loan.status === "edit_requested" && (
+                    <button onClick={() => onAdminAction("reapprove", loan)} className="px-3 py-1 rounded-full text-xs bg-green-600 text-white">
+                      Accept edits → re-approve
+                    </button>
+                  )}
+                  {loan.admin_seen === false && (
+                    <button onClick={() => onAdminAction("acknowledge", loan)} className="px-3 py-1 rounded-full text-xs bg-white border border-slate-300 text-slate-700">
+                      Mark reviewed
+                    </button>
+                  )}
+                </span>
+              )}
             </div>
 
-            {/* Repayment progress bar */}
             <div className="w-full bg-slate-200 rounded-full h-2">
               <div
                 className="bg-indigo-600 h-2 rounded-full transition-all"
                 style={{ width: STATUS_PROGRESS[loan.status] ?? "25%" }}
               ></div>
             </div>
+
+            {showTimeline && loan.id && (
+              <details className="text-sm">
+                <summary className="cursor-pointer text-indigo-600 text-xs font-medium">View history</summary>
+                <LoanTimeline loanId={loan.id} />
+              </details>
+            )}
           </div>
         ))
       )}
