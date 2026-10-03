@@ -41,7 +41,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
     // Check for active loan (pending or approved)
     const { data: active } = await supabase
       .from("loan_applications")
-      .select("id, status")
+      .select("id, status, total_repayment, repayment_date")
       .eq("user_id", user.id)
       .in("status", ["pending", "approved"])
       .maybeSingle();
@@ -66,10 +66,54 @@ export default function UserDashboard({ initialTab = "apply" }) {
     setTab("loans");
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 pb-20 md:pb-6">
       <div className="max-w-4xl mx-auto space-y-4">
         <h1 className="text-2xl font-bold text-slate-800">My Loans</h1>
+
+        {/* Active Loan Banner - shows on all tabs when active loan exists */}
+        {activeLoan && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 md:p-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+                  {activeLoan.status === "pending" ? "⏳" : "📋"}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-900">
+                    {activeLoan.status === "pending" ? "Loan Pending Approval" : "Active Loan — Repayment Required"}
+                  </h3>
+                  <p className="text-amber-800 mt-1">
+                    {activeLoan.status === "pending"
+                      ? "Your application is under review. Once approved, repay on time to unlock higher loan limits."
+                      : "Repay your loan on time to build creditworthiness and qualify for larger amounts on your next application."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm">
+                <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-medium">
+                  {activeLoan.status === "pending" ? "Pending Approval" : "Active"}
+                </span>
+                {activeLoan.total_repayment && (
+                  <span className="text-amber-800 font-medium">
+                    Total due: Mkw {Number(activeLoan.total_repayment).toLocaleString()}
+                  </span>
+                )}
+                {activeLoan.repayment_date && (
+                  <span className="text-amber-800">
+                    Due: {formatDate(activeLoan.repayment_date)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Desktop tabs */}
         <div className="hidden md:flex gap-2">
@@ -124,6 +168,12 @@ export default function UserDashboard({ initialTab = "apply" }) {
                 </p>
                 <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-600">
                   <p className="font-medium">Current status: {activeLoan.status === "pending" ? "Pending approval" : "Active — repayment required"}</p>
+                  {activeLoan.total_repayment && (
+                    <p className="mt-1">Total repayment: Mkw {Number(activeLoan.total_repayment).toLocaleString()}</p>
+                  )}
+                  {activeLoan.repayment_date && (
+                    <p className="mt-1">Due date: {formatDate(activeLoan.repayment_date)}</p>
+                  )}
                 </div>
               </div>
             ) : (
