@@ -1,12 +1,33 @@
 // src/components/Navbar.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../api/supabaseClient";
 import { useAuth } from "../auth/useAuth";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, isAdmin, isActive, logout } = useAuth();
+  const [hasActiveLoan, setHasActiveLoan] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("loan_applications")
+        .select("id")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "approved", "confirmed", "edit_requested"])
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setHasActiveLoan(!!data);
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, isAdmin]);
 
   const handleLogout = async () => {
     const wasAdmin = isAdmin;
@@ -73,13 +94,19 @@ export default function Navbar() {
         {user && !isAdmin && isActive && (
           <>
             <li>
-              <Link
-                to="/apply"
-                onClick={close}
-                className="block py-2 px-4 hover:bg-indigo-700 md:hover:bg-transparent"
-              >
-                Apply
-              </Link>
+              {hasActiveLoan ? (
+                <span className="block py-2 px-4 text-slate-300 cursor-not-allowed">
+                  Apply (Loan active)
+                </span>
+              ) : (
+                <Link
+                  to="/apply"
+                  onClick={close}
+                  className="block py-2 px-4 hover:bg-indigo-700 md:hover:bg-transparent"
+                >
+                  Apply
+                </Link>
+              )}
             </li>
             <li>
               <Link
