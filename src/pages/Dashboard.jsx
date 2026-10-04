@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import LoanTracker from "../components/LoanTracker";
+import LoanDetailView from "../components/LoanDetailView";
 import { supabase } from "../api/supabaseClient";
 import { logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
@@ -20,6 +21,7 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
+  const [detailIndex, setDetailIndex] = useState(null);
 
   const load = async () => {
     try {
@@ -49,6 +51,8 @@ export default function Dashboard() {
         borrower_message: l.borrower_message,
         borrower_decided_at: l.borrower_decided_at,
         admin_seen: l.admin_seen,
+        national_id_path: l.national_id_path,
+        national_id_original: l.national_id_original,
       }));
 
       setLoans(applications);
@@ -184,8 +188,34 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <LoanTracker loans={loans} onUpdateLoan={updateLoan} onAdminAction={handleAdminAction} showTimeline />
+      <LoanTracker
+        loans={loans}
+        onUpdateLoan={updateLoan}
+        onAdminAction={handleAdminAction}
+        showTimeline
+        onViewDetail={(id) => {
+          const i = loans.findIndex((l) => l.id === id);
+          if (i >= 0) setDetailIndex(i);
+        }}
+      />
       {acting && <p className="text-xs text-slate-500">Updating…</p>}
+
+      {detailIndex !== null && loans[detailIndex] && (
+        <LoanDetailView
+          loan={loans[detailIndex]}
+          index={detailIndex}
+          total={loans.length}
+          onClose={() => setDetailIndex(null)}
+          onPrev={() => setDetailIndex((i) => Math.max(0, i - 1))}
+          onNext={() => setDetailIndex((i) => Math.min(loans.length - 1, i + 1))}
+          onAdminAction={async (action, loan) => {
+            await handleAdminAction(action, loan);
+            // If action changed status to something not in ACTIVE list, re-fetch so modal title + stats stay right
+            // Keep modal open; user closes manually.
+          }}
+          acting={acting}
+        />
+      )}
     </div>
   );
 }

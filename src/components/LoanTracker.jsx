@@ -60,6 +60,7 @@ export default function LoanTracker({
   onAdminAction,
   editable = true,
   showTimeline = false,
+  onViewDetail,
 }) {
   const [filter, setFilter] = useState("all");
 
@@ -194,6 +195,15 @@ export default function LoanTracker({
                 style={{ width: STATUS_PROGRESS[loan.status] ?? "25%" }}
               ></div>
             </div>
+
+            {onViewDetail && (
+              <button
+                onClick={() => onViewDetail(loan.id)}
+                className="w-full md:w-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+              >
+                View full application + ID
+              </button>
+            )}
 
             {showTimeline && loan.id && (
               <details className="text-sm">
