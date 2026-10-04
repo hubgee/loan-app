@@ -62,35 +62,11 @@ export default function LoanTracker({
   showTimeline = false,
   onViewDetail,
 }) {
-  const [filter, setFilter] = useState("all");
-
-  const filters = ["all", "pending", "approved", "confirmed", "edit_requested", "cancelled", "repaid"];
-  const filteredLoans =
-    filter === "all" ? loans : loans.filter((loan) => loan.status === filter);
+  const filteredLoans = loans;
 
   return (
     <div className="space-y-4 mt-6">
       <h2 className="text-lg font-bold text-slate-800">Loan Tracker</h2>
-
-      {/* Filter buttons */}
-      <div className="flex gap-2 flex-wrap">
-        {filters.map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-3 py-1.5 rounded-full text-sm ${
-              filter === status
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-200 text-slate-700"
-            }`}
-          >
-            {status === "all" ? "All" : STATUS_LABELS[status] ?? status}
-            {status === "edit_requested" &&
-              loans.some((l) => l.status === "edit_requested" && l.admin_seen === false) &&
-              " •"}
-          </button>
-        ))}
-      </div>
 
       {filteredLoans.length === 0 ? (
         <p className="text-slate-500">No loans match this filter.</p>

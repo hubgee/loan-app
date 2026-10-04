@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LoanTracker from "../components/LoanTracker";
 import LoanDetailView from "../components/LoanDetailView";
@@ -7,21 +7,23 @@ import { supabase } from "../api/supabaseClient";
 import { logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
 
+const PAGE_SIZE = 3;
+
 export default function Dashboard() {
   const { isAdmin } = useAuth();
   const [loans, setLoans] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    approved: 0,
-    confirmed: 0,
-    edit_requested: 0,
-    needsAttention: 0,
-    repaid: 0,
-  });
+  const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
   const [detailIndex, setDetailIndex] = useState(null);
+
+  // Filtering + pagination controls
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [payoutFilter, setPayoutFilter] = useState("all");
+  const [needsReviewOnly, setNeedsReviewOnly] = useState(false);
+  const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
 
   const load = async () => {
     try {
@@ -53,6 +55,7 @@ export default function Dashboard() {
         admin_seen: l.admin_seen,
         national_id_path: l.national_id_path,
         national_id_original: l.national_id_original,
+        created_at: l.created_at,
       }));
 
       setLoans(applications);
@@ -76,6 +79,38 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
+
+  // Filter + search + payout method + needs-review + sort
+  const filteredLoans = useMemo(() => {
+    let out = [...loans];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      out = out.filter(
+        (l) =>
+          (l.name || "").toLowerCase().includes(q) ||
+          (l.email || "").toLowerCase().includes(q) ||
+          (l.phone || "").toLowerCase().includes(q) ||
+          String(l.amount).includes(q)
+      );
+    }
+    if (statusFilter !== "all") out = out.filter((l) => l.status === statusFilter);
+    if (payoutFilter !== "all") out = out.filter((l) => l.payout_method === payoutFilter);
+    if (needsReviewOnly) out = out.filter((l) => l.admin_seen === false);
+
+    if (sort === "newest") out.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    else if (sort === "oldest") out.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    else if (sort === "amount_high") out.sort((a, b) => Number(b.amount) - Number(a.amount));
+    else if (sort === "amount_low") out.sort((a, b) => Number(a.amount) - Number(b.amount));
+    return out;
+  }, [loans, search, statusFilter, payoutFilter, needsReviewOnly, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLoans.length / PAGE_SIZE));
+  const pageLoans = filteredLoans.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Keep page valid when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, payoutFilter, needsReviewOnly, sort]);
 
   const updateLoan = async (id, updatedLoan) => {
     const {
@@ -161,6 +196,65 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Filter / search / sort bar */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div className="flex flex-col md:flex-row gap-2 md:items-center">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, phone or amount…"
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full md:w-auto"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="amount_high">Amount: high → low</option>
+            <option value="amount_low">Amount: low → high</option>
+          </select>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-sm">
+          {["all", "pending", "approved", "confirmed", "edit_requested", "cancelled", "repaid"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-full border ${
+                statusFilter === s ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-200 text-slate-700"
+              }`}
+            >
+              {s === "all" ? "All" : s.replace("_", " ")}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <select
+            value={payoutFilter}
+            onChange={(e) => setPayoutFilter(e.target.value)}
+            className="border border-slate-200 rounded-lg px-2 py-1.5"
+          >
+            <option value="all">All payouts</option>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="bank">Bank</option>
+          </select>
+          <button
+            onClick={() => setNeedsReviewOnly((v) => !v)}
+            className={`px-3 py-1.5 rounded-full border ${
+              needsReviewOnly ? "bg-red-100 border-red-300 text-red-700" : "bg-white border-slate-200 text-slate-700"
+            }`}
+          >
+            {needsReviewOnly ? "● Needs review only" : "Needs review only"}
+          </button>
+          <p className="ml-auto text-slate-500">
+            Showing {pageLoans.length} of {filteredLoans.length}
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded shadow text-center">
           <p className="text-lg font-bold">{stats.total}</p>
@@ -189,29 +283,49 @@ export default function Dashboard() {
       </div>
 
       <LoanTracker
-        loans={loans}
+        loans={pageLoans}
         onUpdateLoan={updateLoan}
         onAdminAction={handleAdminAction}
         showTimeline
         onViewDetail={(id) => {
-          const i = loans.findIndex((l) => l.id === id);
+          const i = filteredLoans.findIndex((l) => l.id === id);
           if (i >= 0) setDetailIndex(i);
         }}
       />
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <button
+          disabled={page === 1}
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium disabled:opacity-40"
+        >
+          ← Prev
+        </button>
+        <p className="text-sm text-slate-600">
+          Page {page} of {totalPages}
+        </p>
+        <button
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium disabled:opacity-40"
+        >
+          Next →
+        </button>
+      </div>
+
       {acting && <p className="text-xs text-slate-500">Updating…</p>}
 
-      {detailIndex !== null && loans[detailIndex] && (
+      {detailIndex !== null && filteredLoans[detailIndex] && (
         <LoanDetailView
-          loan={loans[detailIndex]}
+          loan={filteredLoans[detailIndex]}
           index={detailIndex}
-          total={loans.length}
+          total={filteredLoans.length}
           onClose={() => setDetailIndex(null)}
           onPrev={() => setDetailIndex((i) => Math.max(0, i - 1))}
-          onNext={() => setDetailIndex((i) => Math.min(loans.length - 1, i + 1))}
+          onNext={() => setDetailIndex((i) => Math.min(filteredLoans.length - 1, i + 1))}
           onAdminAction={async (action, loan) => {
             await handleAdminAction(action, loan);
-            // If action changed status to something not in ACTIVE list, re-fetch so modal title + stats stay right
-            // Keep modal open; user closes manually.
           }}
           acting={acting}
         />
