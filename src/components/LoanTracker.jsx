@@ -13,6 +13,9 @@ export const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
   approved: "bg-green-100 text-green-700",
   confirmed: "bg-blue-100 text-blue-700",
+  disbursement_pending: "bg-purple-100 text-purple-700",
+  active: "bg-indigo-100 text-indigo-700",
+  repayment_pending: "bg-yellow-100 text-yellow-700",
   edit_requested: "bg-orange-100 text-orange-700",
   cancelled: "bg-slate-200 text-slate-600",
   repaid: "bg-indigo-100 text-indigo-700",
@@ -21,7 +24,10 @@ export const STATUS_STYLES = {
 export const STATUS_PROGRESS = {
   pending: "20%",
   approved: "50%",
-  confirmed: "75%",
+  confirmed: "60%",
+  disbursement_pending: "70%",
+  active: "80%",
+  repayment_pending: "90%",
   edit_requested: "60%",
   cancelled: "100%",
   repaid: "100%",
@@ -31,6 +37,9 @@ export const STATUS_LABELS = {
   pending: "Pending",
   approved: "Approved",
   confirmed: "Confirmed",
+  disbursement_pending: "Disbursement pending",
+  active: "Active",
+  repayment_pending: "Repayment pending",
   edit_requested: "Edit requested",
   cancelled: "Cancelled",
   repaid: "Repaid",
@@ -149,6 +158,16 @@ export default function LoanTracker({
                   {loan.status === "confirmed" && (
                     <button onClick={() => onAdminAction("repaid", loan)} className="px-3 py-1 rounded-full text-xs bg-indigo-600 text-white">
                       Mark repaid
+                    </button>
+                  )}
+                  {loan.status === "confirmed" && (
+                    <button onClick={() => onAdminAction("disburse", loan)} className="px-3 py-1 rounded-full text-xs bg-blue-600 text-white">
+                      Disburse funds
+                    </button>
+                  )}
+                  {loan.status === "repayment_pending" && (
+                    <button onClick={() => onAdminAction("verify_repayment", loan)} className="px-3 py-1 rounded-full text-xs bg-indigo-600 text-white">
+                      Verify repayment
                     </button>
                   )}
                   {loan.status === "edit_requested" && (

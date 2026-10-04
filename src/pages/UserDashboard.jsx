@@ -4,11 +4,13 @@ import LoanForm from "../components/LoanForm";
 import LoanTracker from "../components/LoanTracker";
 import LoanEditModal from "../components/LoanEditModal";
 import LoanTimeline from "../components/LoanTimeline";
+import ConfirmReceiptPanel from "../components/ConfirmReceiptPanel";
+import SubmitRepaymentModal from "../components/SubmitRepaymentModal";
 import { supabase } from "../api/supabaseClient";
 import { calcLoan, logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
 
-const ACTIVE_STATUSES = ["pending", "approved", "confirmed", "edit_requested"];
+const ACTIVE_STATUSES = ["pending", "approved", "confirmed", "edit_requested", "disbursement_pending", "active", "repayment_pending"];
 
 function mapRow(l) {
   return {
@@ -44,6 +46,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [showRepayment, setShowRepayment] = useState(false);
 
   const load = async () => {
     if (!user) return;
@@ -211,7 +214,13 @@ export default function UserDashboard({ initialTab = "apply" }) {
     if (loan.status === "approved")
       return { title: "Approved — action needed", body: "Admin approved your loan. Please confirm the details are correct to trigger disbursement, or request an edit / cancel.", icon: "✅" };
     if (loan.status === "confirmed")
-      return { title: "Confirmed — awaiting disbursement", body: "You confirmed. Admin will now send the money and mark it repaid after you repay.", icon: "💸" };
+      return { title: "Confirmed — awaiting disbursement", body: "You confirmed. Admin will now send the money and record the reference so you can verify receipt.", icon: "💸" };
+    if (loan.status === "disbursement_pending")
+      return { title: "Disbursement sent — confirm receipt", body: "Admin marked funds as sent. Please check and confirm below.", icon: "📲" };
+    if (loan.status === "active")
+      return { title: "Active Loan", body: "Send repayment externally, then submit the reference number here.", icon: "📋" };
+    if (loan.status === "repayment_pending")
+      return { title: "Repayment submitted", body: "Admin is verifying your repayment reference.", icon: "🔍" };
     if (loan.status === "edit_requested")
       return { title: "Edit sent — waiting for admin", body: "Admin is reviewing your requested changes. You will confirm again once re-approved.", icon: "✏️" };
     return { title: "Active Loan", body: "Repay on time to unlock higher limits.", icon: "📋" };
@@ -249,6 +258,19 @@ export default function UserDashboard({ initialTab = "apply" }) {
                 )}
               </div>
             </div>
+
+            {activeLoan.status === "disbursement_pending" && fullActiveLoan && (
+              <ConfirmReceiptPanel loan={fullActiveLoan} onDone={load} />
+            )}
+
+            {activeLoan.status === "active" && fullActiveLoan && (
+              <button
+                onClick={() => setShowRepayment(true)}
+                className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold"
+              >
+                Submit Repayment
+              </button>
+            )}
 
             {activeLoan.status === "approved" && fullActiveLoan && (
               <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-2">
@@ -338,6 +360,10 @@ export default function UserDashboard({ initialTab = "apply" }) {
 
       {showEdit && fullActiveLoan && (
         <LoanEditModal loan={fullActiveLoan} onClose={() => setShowEdit(false)} onSubmit={handleEditSubmit} submitting={acting} />
+      )}
+
+      {showRepayment && fullActiveLoan && (
+        <SubmitRepaymentModal loan={fullActiveLoan} onClose={() => setShowRepayment(false)} onDone={load} />
       )}
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50">

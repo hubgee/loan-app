@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LoanTracker from "../components/LoanTracker";
 import LoanDetailView from "../components/LoanDetailView";
+import DisburseModal from "../components/DisburseModal";
+import VerifyRepaymentModal from "../components/VerifyRepaymentModal";
 import { supabase } from "../api/supabaseClient";
 import { logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
@@ -16,6 +18,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
   const [detailIndex, setDetailIndex] = useState(null);
+  const [disburseLoan, setDisburseLoan] = useState(null);
+  const [verifyLoan, setVerifyLoan] = useState(null);
 
   // Filtering + pagination controls
   const [search, setSearch] = useState("");
@@ -150,6 +154,15 @@ export default function Dashboard() {
       } else if (action === "reapprove") {
         toStatus = "approved"; eventAction = "re_approved";
         patch = { ...patch, status: "approved", borrower_message: null };
+      } else if (action === "disburse") {
+        // Open modal instead of immediate status change
+        setDisburseLoan(loan);
+        setActing(null);
+        return;
+      } else if (action === "verify_repayment") {
+        setVerifyLoan(loan);
+        setActing(null);
+        return;
       } else if (action === "repaid") {
         toStatus = "repaid"; eventAction = "repaid";
         patch = { ...patch, status: "repaid" };
@@ -315,6 +328,14 @@ export default function Dashboard() {
       </div>
 
       {acting && <p className="text-xs text-slate-500">Updating…</p>}
+
+      {disburseLoan && (
+        <DisburseModal loan={disburseLoan} onClose={() => setDisburseLoan(null)} onDone={load} />
+      )}
+
+      {verifyLoan && (
+        <VerifyRepaymentModal loan={verifyLoan} onClose={() => setVerifyLoan(null)} onDone={load} />
+      )}
 
       {detailIndex !== null && filteredLoans[detailIndex] && (
         <LoanDetailView
