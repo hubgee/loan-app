@@ -46,7 +46,7 @@ export default function DisburseModal({ loan, onClose, onDone }) {
       });
       await supabase
         .from("loan_applications")
-        .update({ status: "disbursement_pending", admin_seen: false })
+        .update({ status: "disbursement_pending", admin_seen: true, borrower_message: null })
         .eq("id", loan.id);
       await logLoanEvent({
         loanId: loan.id,

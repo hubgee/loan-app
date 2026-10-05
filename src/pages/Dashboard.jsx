@@ -68,6 +68,9 @@ export default function Dashboard() {
         pending: applications.filter((l) => l.status === "pending").length,
         approved: applications.filter((l) => l.status === "approved").length,
         confirmed: applications.filter((l) => l.status === "confirmed").length,
+        disbursement_pending: applications.filter((l) => l.status === "disbursement_pending").length,
+        active: applications.filter((l) => l.status === "active").length,
+        repayment_pending: applications.filter((l) => l.status === "repayment_pending").length,
         edit_requested: applications.filter((l) => l.status === "edit_requested").length,
         needsAttention: applications.filter((l) => l.admin_seen === false).length,
         repaid: applications.filter((l) => l.status === "repaid").length,
@@ -205,7 +208,18 @@ export default function Dashboard() {
 
       {stats.needsAttention > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800">
-          🔔 {stats.needsAttention} loan{stats.needsAttention > 1 ? "s need" : " needs"} review — borrower confirmed, requested edits, cancelled, or new application.
+          🔔 {stats.needsAttention} loan{stats.needsAttention > 1 ? "s need" : " needs"} review
+          {[
+            stats.pending > 0 && `${stats.pending} new`,
+            stats.edit_requested > 0 && `${stats.edit_requested} edit request${stats.edit_requested > 1 ? "s" : ""}`,
+            stats.confirmed > 0 && `${stats.confirmed} confirmed — ready to disburse`,
+            stats.disbursement_pending > 0 && `${stats.disbursement_pending} disbursement issue${stats.disbursement_pending > 1 ? "s" : ""}`,
+            stats.active > 0 && `${stats.active} active — receipt confirmed`,
+            stats.repayment_pending > 0 && `${stats.repayment_pending} repayment${stats.repayment_pending > 1 ? "s" : ""} to verify`,
+          ]
+            .filter(Boolean)
+            .join(" • ")}
+          .
         </div>
       )}
 
@@ -231,7 +245,7 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm">
-          {["all", "pending", "approved", "confirmed", "edit_requested", "cancelled", "repaid"].map((s) => (
+          {["all", "pending", "approved", "confirmed", "disbursement_pending", "active", "repayment_pending", "edit_requested", "cancelled", "repaid"].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}

@@ -15,16 +15,24 @@ export default function ConfirmReceiptPanel({ loan, onDone }) {
       const { data: auth } = await supabase.auth.getUser();
       const user = auth?.user;
       if (!user) throw new Error("Not signed in.");
-      await supabase
+      const { error: loanError } = await supabase
         .from("loan_applications")
-        .update({ status: "active", admin_seen: false, borrower_message: null })
-        .eq("id", loan.id);
-      await supabase
+        .update({
+          status: "active",
+          admin_seen: false,
+          borrower_message: null,
+          borrower_decided_at: new Date().toISOString(),
+        })
+        .eq("id", loan.id)
+        .eq("status", "disbursement_pending");
+      if (loanError) throw loanError;
+      const { error: txError } = await supabase
         .from("loan_transactions")
         .update({ status: "confirmed", confirmed_by: user.id, confirmed_at: new Date().toISOString() })
         .eq("loan_id", loan.id)
         .eq("type", "disbursement")
         .eq("status", "pending_confirmation");
+      if (txError) throw txError;
       await logLoanEvent({
         loanId: loan.id,
         actorRole: "borrower",
@@ -50,10 +58,12 @@ export default function ConfirmReceiptPanel({ loan, onDone }) {
       const { data: auth } = await supabase.auth.getUser();
       const user = auth?.user;
       if (!user) throw new Error("Not signed in.");
-      await supabase
+      const { error: loanError } = await supabase
         .from("loan_applications")
         .update({ admin_seen: false, borrower_message: issueMessage.trim() })
-        .eq("id", loan.id);
+        .eq("id", loan.id)
+        .eq("status", "disbursement_pending");
+      if (loanError) throw loanError;
       await logLoanEvent({
         loanId: loan.id,
         actorRole: "borrower",

@@ -135,6 +135,9 @@ export default function LoanTracker({
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="confirmed">Confirmed</option>
+                  <option value="disbursement_pending">Disbursement pending</option>
+                  <option value="active">Active</option>
+                  <option value="repayment_pending">Repayment pending</option>
                   <option value="edit_requested">Edit requested</option>
                   <option value="cancelled">Cancelled</option>
                   <option value="repaid">Repaid</option>
@@ -156,14 +159,19 @@ export default function LoanTracker({
                     </button>
                   )}
                   {loan.status === "confirmed" && (
-                    <button onClick={() => onAdminAction("repaid", loan)} className="px-3 py-1 rounded-full text-xs bg-indigo-600 text-white">
-                      Mark repaid
-                    </button>
-                  )}
-                  {loan.status === "confirmed" && (
                     <button onClick={() => onAdminAction("disburse", loan)} className="px-3 py-1 rounded-full text-xs bg-blue-600 text-white">
                       Disburse funds
                     </button>
+                  )}
+                  {loan.status === "disbursement_pending" && (
+                    <span className="px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-700">
+                      Waiting for borrower receipt
+                    </span>
+                  )}
+                  {loan.status === "active" && (
+                    <span className="px-3 py-1 rounded-full text-xs bg-indigo-100 text-indigo-700">
+                      Active — waiting for repayment
+                    </span>
                   )}
                   {loan.status === "repayment_pending" && (
                     <button onClick={() => onAdminAction("verify_repayment", loan)} className="px-3 py-1 rounded-full text-xs bg-indigo-600 text-white">

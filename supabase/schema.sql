@@ -85,7 +85,7 @@ create table public.loan_applications (
   borrower_decided_at  timestamptz,
   admin_seen           boolean not null default false,
   status               text not null default 'pending'
-                        check (status in ('pending','approved','confirmed','edit_requested','cancelled','repaid')),
+                        check (status in ('pending','approved','confirmed','disbursement_pending','active','repayment_pending','edit_requested','cancelled','repaid')),
   processed_by         uuid,
   user_id              uuid references public.profiles(id) on delete set null,
   created_at           timestamptz not null default now(),
@@ -100,7 +100,7 @@ create index if not exists loan_applications_user_id_idx
 
 create unique index if not exists loan_applications_one_active_per_user
   on public.loan_applications (user_id)
-  where status in ('pending', 'approved', 'confirmed', 'edit_requested');
+  where status in ('pending', 'approved', 'confirmed', 'disbursement_pending', 'active', 'repayment_pending', 'edit_requested');
 
 -- ----------------------------------------------------------------
 -- 3) RLS helper functions
@@ -263,6 +263,34 @@ create policy "Borrowers can respond to approved loans"
   with check (
     user_id = auth.uid()
     and status in ('confirmed','edit_requested','cancelled')
+  );
+
+drop policy if exists "Borrowers can confirm disbursement" on public.loan_applications;
+create policy "Borrowers can confirm disbursement"
+  on public.loan_applications
+  for update to authenticated
+  using (
+    user_id = auth.uid()
+    and status = 'disbursement_pending'
+    and public.is_active_user()
+  )
+  with check (
+    user_id = auth.uid()
+    and status in ('disbursement_pending','active')
+  );
+
+drop policy if exists "Borrowers can submit repayment" on public.loan_applications;
+create policy "Borrowers can submit repayment"
+  on public.loan_applications
+  for update to authenticated
+  using (
+    user_id = auth.uid()
+    and status = 'active'
+    and public.is_active_user()
+  )
+  with check (
+    user_id = auth.uid()
+    and status = 'repayment_pending'
   );
 
 -- ----------------------------------------------------------------

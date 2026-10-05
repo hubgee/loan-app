@@ -89,6 +89,10 @@ create policy "Admins can view all transactions"
   on public.loan_transactions for select to authenticated
   using (public.is_admin());
 
+create policy "Admins can insert transactions"
+  on public.loan_transactions for insert to authenticated
+  with check (public.is_admin());
+
 create policy "Admins can update all transactions"
   on public.loan_transactions for update to authenticated
   using (public.is_admin()) with check (public.is_admin());

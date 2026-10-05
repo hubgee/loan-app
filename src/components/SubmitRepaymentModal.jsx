@@ -43,10 +43,12 @@ export default function SubmitRepaymentModal({ loan, onClose, onDone }) {
         proofFile,
         submittedBy: user.id,
       });
-      await supabase
+      const { error: loanError } = await supabase
         .from("loan_applications")
         .update({ status: "repayment_pending", admin_seen: false, borrower_message: `Repayment ref ${referenceNumber}${senderPhone ? ` from ${senderPhone}` : ""}` })
-        .eq("id", loan.id);
+        .eq("id", loan.id)
+        .eq("status", "active");
+      if (loanError) throw loanError;
       await logLoanEvent({
         loanId: loan.id,
         actorRole: "borrower",

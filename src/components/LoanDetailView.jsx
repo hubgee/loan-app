@@ -5,6 +5,9 @@ const STATUS_PILL = {
   pending: "bg-amber-100 text-amber-800",
   approved: "bg-green-100 text-green-800",
   confirmed: "bg-blue-100 text-blue-800",
+  disbursement_pending: "bg-purple-100 text-purple-800",
+  active: "bg-indigo-100 text-indigo-800",
+  repayment_pending: "bg-yellow-100 text-yellow-800",
   edit_requested: "bg-orange-100 text-orange-800",
   cancelled: "bg-slate-200 text-slate-700",
   repaid: "bg-indigo-100 text-indigo-800",
@@ -14,7 +17,10 @@ const STATUS_PROGRESS = {
   pending: "20%",
   approved: "50%",
   edit_requested: "60%",
-  confirmed: "75%",
+  confirmed: "65%",
+  disbursement_pending: "75%",
+  active: "85%",
+  repayment_pending: "92%",
   cancelled: "100%",
   repaid: "100%",
 };
@@ -175,8 +181,23 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
                   </button>
                 )}
                 {loan.status === "confirmed" && (
-                  <button disabled={acting === loan.id} onClick={() => onAdminAction("repaid", loan)} className="px-4 py-2 rounded-full text-sm bg-indigo-600 text-white disabled:opacity-50">
-                    Mark repaid
+                  <button disabled={acting === loan.id} onClick={() => onAdminAction("disburse", loan)} className="px-4 py-2 rounded-full text-sm bg-blue-600 text-white disabled:opacity-50">
+                    Disburse funds
+                  </button>
+                )}
+                {loan.status === "disbursement_pending" && (
+                  <span className="px-4 py-2 rounded-full text-sm bg-purple-100 text-purple-700">
+                    Waiting for borrower receipt
+                  </span>
+                )}
+                {loan.status === "active" && (
+                  <span className="px-4 py-2 rounded-full text-sm bg-indigo-100 text-indigo-700">
+                    Active — waiting for repayment
+                  </span>
+                )}
+                {loan.status === "repayment_pending" && (
+                  <button disabled={acting === loan.id} onClick={() => onAdminAction("verify_repayment", loan)} className="px-4 py-2 rounded-full text-sm bg-indigo-600 text-white disabled:opacity-50">
+                    Verify repayment
                   </button>
                 )}
                 {loan.admin_seen === false && (
