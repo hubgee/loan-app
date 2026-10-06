@@ -144,16 +144,25 @@ export default function VerifyRepaymentModal({ loan, onClose, onDone }) {
 function ProofPreview({ path }) {
   const [url, setUrl] = useState(null);
   const [isPdf, setIsPdf] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
-      const { data } = await supabase.storage.from("proofs").createSignedUrl(path, 3600);
-      if (data?.signedUrl) {
+      const { data, error } = await supabase.storage.from("proofs").createSignedUrl(path, 3600);
+      if (cancelled) return;
+      if (error || !data?.signedUrl) {
+        setError("Could not load proof.");
+      } else {
         setUrl(data.signedUrl);
         setIsPdf(path.toLowerCase().endsWith(".pdf"));
       }
     };
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [path]);
+  if (error) return <p className="text-xs text-red-500">{error}</p>;
   if (!url) return <p className="text-xs text-slate-400">Loading proof…</p>;
   return (
     <div className="border rounded-xl overflow-hidden bg-slate-50">

@@ -81,13 +81,24 @@ export default function LoanTimeline({ loanId }) {
 
 function ProofLink({ path }) {
   const [url, setUrl] = useState(null);
+  const [error, setError] = useState("");
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
-      const { data } = await supabase.storage.from("proofs").createSignedUrl(path, 3600);
-      if (data?.signedUrl) setUrl(data.signedUrl);
+      const { data, error } = await supabase.storage.from("proofs").createSignedUrl(path, 3600);
+      if (cancelled) return;
+      if (error || !data?.signedUrl) {
+        setError("Could not load proof.");
+      } else {
+        setUrl(data.signedUrl);
+      }
     };
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [path]);
+  if (error) return <p className="text-red-500">{error}</p>;
   if (!url) return <p className="text-slate-400">Loading proof…</p>;
   return <a href={url} target="_blank" rel="noreferrer" className="text-indigo-600 underline">View proof</a>;
 }

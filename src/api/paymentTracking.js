@@ -32,7 +32,15 @@ export async function createTransaction({
 }) {
   let proofUrl = null;
   if (proofFile) {
-    const path = `${submittedBy}/${Date.now()}_${proofFile.name}`;
+    // Store under the borrower's folder so the borrower can read it later,
+    // even when the admin is the one uploading the disbursement proof.
+    const { data: loan, error: loanError } = await supabase
+      .from("loan_applications")
+      .select("user_id")
+      .eq("id", loanId)
+      .single();
+    if (loanError) throw loanError;
+    const path = `${loan.user_id}/${Date.now()}_${proofFile.name}`;
     const { error: uploadError } = await supabase.storage
       .from("proofs")
       .upload(path, proofFile, { upsert: false });

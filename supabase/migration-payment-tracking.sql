@@ -113,3 +113,20 @@ create policy "Admins can read proofs"
 create policy "Borrowers can read own proofs"
   on storage.objects for select to authenticated
   using (bucket_id = 'proofs' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Admins can upload proofs"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'proofs' and public.is_admin());
+
+create policy "Borrowers can read proofs for their loans"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'proofs'
+    and exists (
+      select 1
+      from public.loan_transactions t
+      join public.loan_applications l on l.id = t.loan_id
+      where t.proof_url = storage.objects.name
+        and l.user_id = auth.uid()
+    )
+  );
