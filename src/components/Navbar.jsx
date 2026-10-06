@@ -11,14 +11,29 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || isAdmin) return;
+    if (!user) {
+      setHasActiveLoan(false);
+      return;
+    }
+    if (isAdmin) {
+      setHasActiveLoan(false);
+      return;
+    }
     let cancelled = false;
     const load = async () => {
       const { data } = await supabase
         .from("loan_applications")
         .select("id")
         .eq("user_id", user.id)
-        .in("status", ["pending", "approved", "confirmed", "edit_requested"])
+        .in("status", [
+          "pending",
+          "approved",
+          "confirmed",
+          "disbursement_pending",
+          "active",
+          "repayment_pending",
+          "edit_requested",
+        ])
         .limit(1)
         .maybeSingle();
       if (!cancelled) setHasActiveLoan(!!data);
