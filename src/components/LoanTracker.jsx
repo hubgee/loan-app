@@ -2,6 +2,27 @@
 
 import { useState } from "react";
 import LoanTimeline from "./LoanTimeline";
+import CollateralGallery from "./CollateralGallery";
+import { COLLATERAL_LABELS } from "../api/collateral";
+
+function CollateralSummary({ loan }) {
+  const principal = Number(loan.amount || 0);
+  const total = Number(loan.total_repayment || 0);
+  const val = Number(loan.collateral_value || 0);
+  const shortfall = Number(loan.collateral_shortfall ?? Math.max(0, total - val));
+  const covers = total > 0 && val >= total;
+  return (
+    <div className="space-y-1">
+      <p className="text-slate-600">
+        {COLLATERAL_LABELS[loan.collateral_type] ?? loan.collateral_type ?? "—"} • Mwk {val.toLocaleString()}
+      </p>
+      <p className={covers ? "text-green-700" : "text-amber-700"}>
+        {covers ? `Covers total (+Mwk ${(val - total).toLocaleString()} surplus)` : `Shortfall Mwk ${shortfall.toLocaleString()} after forfeit`}
+      </p>
+      <CollateralGallery loanId={loan.id} compact />
+    </div>
+  );
+}
 
 const DURATION_LABELS = {
   "1_week": "1 Week",
@@ -119,6 +140,13 @@ export default function LoanTracker({
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5 text-sm">
                 <p className="font-medium text-orange-800">Borrower note:</p>
                 <p className="text-orange-900">“{loan.borrower_message}”</p>
+              </div>
+            )}
+
+            {(loan.collateral_type || loan.collateral_value) && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+                <p className="font-medium text-slate-700">Collateral</p>
+                <CollateralSummary loan={loan} />
               </div>
             )}
 

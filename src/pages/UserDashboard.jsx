@@ -24,13 +24,17 @@ function mapRow(l) {
     interest_amount: l.interest_amount,
     total_repayment: l.total_repayment,
     repayment_date: l.repayment_date,
-    purpose: l.purpose,
     status: l.status,
     payout_method: l.payout_method,
     payout_provider: l.payout_provider,
     payout_account_name: l.payout_account_name,
     payout_account_number: l.payout_account_number,
     payout_branch: l.payout_branch,
+    collateral_type: l.collateral_type,
+    collateral_description: l.collateral_description,
+    collateral_value: l.collateral_value,
+    collateral_shortfall: l.collateral_shortfall,
+    shortfall_acknowledged: l.shortfall_acknowledged,
     borrower_message: l.borrower_message,
     borrower_decided_at: l.borrower_decided_at,
   };
@@ -47,6 +51,18 @@ export default function UserDashboard({ initialTab = "apply" }) {
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showRepayment, setShowRepayment] = useState(false);
+  const [editFileCount, setEditFileCount] = useState(0);
+
+  const openEdit = async () => {
+    setShowEdit(true);
+    if (fullActiveLoan?.id) {
+      const { count } = await supabase
+        .from("loan_collateral_files")
+        .select("id", { count: "exact", head: true })
+        .eq("loan_id", fullActiveLoan.id);
+      setEditFileCount(count ?? 0);
+    }
+  };
 
   const load = async () => {
     if (!user) return;
@@ -173,12 +189,16 @@ export default function UserDashboard({ initialTab = "apply" }) {
           interest_amount: interest,
           total_repayment: totalRepayment,
           repayment_date: date.toISOString().split("T")[0],
-          purpose: form.purpose || null,
           payout_method: form.payout_method,
           payout_provider: form.payout_provider,
           payout_account_name: form.payout_account_name.trim(),
           payout_account_number: form.payout_account_number.trim(),
           payout_branch: form.payout_method === "bank" ? form.payout_branch.trim() : null,
+          collateral_type: form.collateral_type,
+          collateral_description: String(form.collateral_description ?? "").trim(),
+          collateral_value: Number(form.collateral_value),
+          collateral_shortfall: form.shortfall ?? 0,
+          shortfall_acknowledged: (form.shortfall ?? 0) > 0,
           status: "edit_requested",
           borrower_message: form.reason.trim(),
           borrower_decided_at: new Date().toISOString(),
@@ -187,6 +207,18 @@ export default function UserDashboard({ initialTab = "apply" }) {
         .eq("id", fullActiveLoan.id)
         .eq("status", "approved");
       if (error) throw error;
+      for (const f of form.newFiles ?? []) {
+        const cPath = `${user.id}/collateral/${Date.now()}_${f.name}`;
+        const { error: cErr } = await supabase.storage.from("proofs").upload(cPath, f, { upsert: false });
+        if (cErr) throw cErr;
+        const { error: rowErr } = await supabase.from("loan_collateral_files").insert({
+          loan_id: fullActiveLoan.id,
+          storage_path: cPath,
+          original_name: f.name,
+          mime_type: f.type || null,
+        });
+        if (rowErr) throw rowErr;
+      }
       await logLoanEvent({
         loanId: fullActiveLoan.id, actorRole: "borrower", actorId: user.id,
         action: "edit_requested", fromStatus: "approved", toStatus: "edit_requested",
@@ -280,7 +312,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
                     <button disabled={acting} onClick={handleConfirm} className="py-3 rounded-xl bg-green-600 text-white font-semibold disabled:opacity-50">
                       {acting ? "Working…" : "✓ Confirm loan"}
                     </button>
-                    <button disabled={acting} onClick={() => setShowEdit(true)} className="py-3 rounded-xl bg-white border border-slate-300 font-semibold text-slate-700">
+                    <button disabled={acting} onClick={openEdit} className="py-3 rounded-xl bg-white border border-slate-300 font-semibold text-slate-700">
                       ✏️ Edit loan
                     </button>
                     <button disabled={acting} onClick={() => setShowCancel(true)} className="py-3 rounded-xl bg-white border border-red-300 font-semibold text-red-700">
@@ -359,7 +391,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
       </div>
 
       {showEdit && fullActiveLoan && (
-        <LoanEditModal loan={fullActiveLoan} onClose={() => setShowEdit(false)} onSubmit={handleEditSubmit} submitting={acting} />
+        <LoanEditModal loan={fullActiveLoan} existingFileCount={editFileCount} onClose={() => setShowEdit(false)} onSubmit={handleEditSubmit} submitting={acting} />
       )}
 
       {showRepayment && fullActiveLoan && (
