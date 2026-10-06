@@ -6,6 +6,7 @@ import LoanEditModal from "../components/LoanEditModal";
 import LoanTimeline from "../components/LoanTimeline";
 import ConfirmReceiptPanel from "../components/ConfirmReceiptPanel";
 import SubmitRepaymentModal from "../components/SubmitRepaymentModal";
+import RepaymentCountdown from "../components/RepaymentCountdown";
 import { supabase } from "../api/supabaseClient";
 import { calcLoan, logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
@@ -290,6 +291,10 @@ export default function UserDashboard({ initialTab = "apply" }) {
                 )}
               </div>
             </div>
+
+            {activeLoan && (
+              <RepaymentCountdown loan={activeLoan} />
+            )}
 
             {activeLoan.status === "disbursement_pending" && fullActiveLoan && (
               <ConfirmReceiptPanel loan={fullActiveLoan} onDone={load} />

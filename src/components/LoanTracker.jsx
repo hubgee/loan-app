@@ -3,6 +3,7 @@
 import { useState } from "react";
 import LoanTimeline from "./LoanTimeline";
 import CollateralGallery from "./CollateralGallery";
+import RepaymentCountdown from "./RepaymentCountdown";
 import { COLLATERAL_LABELS } from "../api/collateral";
 
 function CollateralSummary({ loan }) {
@@ -126,6 +127,7 @@ export default function LoanTracker({
               Total repayment: Mkw {loan.total_repayment}
             </p>
             <p className="text-slate-600">Due: {loan.repayment_date}</p>
+            <RepaymentCountdown loan={loan} compact />
 
             {loan.payout_method && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
