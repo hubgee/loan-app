@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { calcLoan } from "../api/loanDecisions";
 import { PAYOUT_PROVIDER_LABELS } from "./LoanForm";
-import { COLLATERAL_TYPES, coverageInfo } from "../api/collateral";
+import { COLLATERAL_TYPES, coverageInfo, isMobileDevice, normalizeCameraFile } from "../api/collateral";
 
 const MOBILE_PROVIDERS = [
   { id: "airtel_money", label: "Airtel Money" },
@@ -42,6 +42,17 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
     [form.amount, form.collateral_value, totalRepayment]
   );
   const totalFiles = existingFileCount + form.newFiles.length;
+  const isMobile = isMobileDevice();
+
+  const handleCameraCapture = (e) => {
+    const shot = e.target.files?.[0];
+    e.target.value = "";
+    if (!shot) return;
+    setForm((p) => {
+      if (existingFileCount + p.newFiles.length >= 6) return p;
+      return { ...p, newFiles: [...p.newFiles, normalizeCameraFile(shot)] };
+    });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -118,7 +129,19 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
           )}
           <div>
             <label className="block text-sm font-medium">Add files ({totalFiles}/6, existing {existingFileCount})</label>
-            <input type="file" accept="image/*,.pdf" multiple onChange={(e) => set("newFiles", Array.from(e.target.files ?? []).slice(0, 6 - existingFileCount))} className="w-full text-sm" />
+            <p className="text-xs text-slate-500 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
+            <div className="flex gap-2 flex-wrap">
+              {isMobile && totalFiles < 6 && (
+                <label className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium cursor-pointer">
+                  📷 Take photo
+                  <input type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
+                </label>
+              )}
+              <label className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium cursor-pointer bg-white">
+                📁 Choose files
+                <input type="file" accept="image/*,.pdf" multiple onChange={(e) => set("newFiles", Array.from(e.target.files ?? []).slice(0, 6 - existingFileCount))} className="hidden" />
+              </label>
+            </div>
           </div>
           {coverage && coverage.shortfall > 0 && (
             <label className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded p-3">

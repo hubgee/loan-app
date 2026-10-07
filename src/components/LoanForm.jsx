@@ -8,6 +8,8 @@ import {
   COLLATERAL_MIN_FILES,
   COLLATERAL_MAX_FILES,
   coverageInfo,
+  isMobileDevice,
+  normalizeCameraFile,
 } from "../api/collateral";
 
 const DURATION_RATES = {
@@ -132,6 +134,20 @@ export default function LoanForm({ onAddLoan }) {
       collateralFiles: prev.collateralFiles.filter((_, i) => i !== idx),
     }));
   };
+
+  // Mobile camera capture: one photo per shot, appended to the same list
+  // as picked files so count/upload/validation stay unchanged.
+  const handleCameraCapture = (e) => {
+    const shot = e.target.files?.[0];
+    e.target.value = "";
+    if (!shot) return;
+    setFormData((prev) => {
+      if (prev.collateralFiles.length >= COLLATERAL_MAX_FILES) return prev;
+      return { ...prev, collateralFiles: [...prev.collateralFiles, normalizeCameraFile(shot)] };
+    });
+  };
+
+  const isMobile = isMobileDevice();
 
   const setPayoutMethod = (method) => {
     setFormData((prev) => ({ ...prev, payoutMethod: method, payoutProvider: "" }));
@@ -521,7 +537,19 @@ export default function LoanForm({ onAddLoan }) {
 
         <div>
           <label className="block mb-1 text-sm font-medium">Collateral photos/documents ({formData.collateralFiles.length}/{COLLATERAL_MAX_FILES})</label>
-          <input type="file" name="collateralFiles" accept="image/*,.pdf" multiple onChange={handleChange} className="w-full text-sm" />
+          <p className="text-xs text-slate-500 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
+          <div className="flex gap-2 flex-wrap">
+            {isMobile && formData.collateralFiles.length < COLLATERAL_MAX_FILES && (
+              <label className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium cursor-pointer">
+                📷 Take photo
+                <input type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
+              </label>
+            )}
+            <label className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium cursor-pointer bg-white">
+              📁 Choose files
+              <input type="file" name="collateralFiles" accept="image/*,.pdf" multiple onChange={handleChange} className="hidden" />
+            </label>
+          </div>
           {formData.collateralFiles.length > 0 && (
             <ul className="mt-2 space-y-1 text-sm">
               {formData.collateralFiles.map((f, i) => (
