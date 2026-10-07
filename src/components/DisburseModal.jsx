@@ -67,7 +67,7 @@ export default function DisburseModal({ loan, onClose, onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div className="fixed inset-0 bg-black/50 z-[80] flex items-end md:items-center justify-center p-0 md:p-4">
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
         <h3 className="text-lg font-bold text-slate-800">Disburse Funds</h3>
         <p className="text-sm text-slate-600">Enter the reference number from your mobile money / bank so the borrower can confirm receipt.</p>

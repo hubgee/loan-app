@@ -93,7 +93,7 @@ export default function VerifyRepaymentModal({ loan, onClose, onDone }) {
   const short = paid > 0 && paid < due;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+    <div className="fixed inset-0 bg-black/50 z-[80] flex items-end md:items-center justify-center p-0 md:p-4">
       <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
         <h3 className="text-lg font-bold text-slate-800">Verify Repayment</h3>
         {loading ? (
