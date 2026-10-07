@@ -38,7 +38,16 @@ export default function VerifyRepaymentModal({ loan, onClose, onDone }) {
       const user = auth?.user;
       if (!user) throw new Error("Not signed in.");
       await updateTransactionStatus({ id: transaction.id, status: "confirmed", confirmedBy: user.id });
-      await supabase.from("loan_applications").update({ status: "repaid", admin_seen: true }).eq("id", loan.id);
+      await supabase
+        .from("loan_applications")
+        .update({
+          status: "repaid",
+          settlement_method: "cash",
+          settled_at: new Date().toISOString(),
+          settled_by: user.id,
+          admin_seen: true,
+        })
+        .eq("id", loan.id);
       await logLoanEvent({
         loanId: loan.id,
         actorRole: "admin",

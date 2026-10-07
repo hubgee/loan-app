@@ -38,9 +38,11 @@ export const STATUS_STYLES = {
   disbursement_pending: "bg-purple-100 text-purple-700",
   active: "bg-indigo-100 text-indigo-700",
   repayment_pending: "bg-yellow-100 text-yellow-700",
+  forfeiture_pending: "bg-orange-100 text-orange-700",
   edit_requested: "bg-orange-100 text-orange-700",
   cancelled: "bg-slate-200 text-slate-600",
   repaid: "bg-indigo-100 text-indigo-700",
+  forfeited: "bg-slate-800 text-white",
 };
 
 export const STATUS_PROGRESS = {
@@ -50,9 +52,11 @@ export const STATUS_PROGRESS = {
   disbursement_pending: "70%",
   active: "80%",
   repayment_pending: "90%",
+  forfeiture_pending: "90%",
   edit_requested: "60%",
   cancelled: "100%",
   repaid: "100%",
+  forfeited: "100%",
 };
 
 export const STATUS_LABELS = {
@@ -62,9 +66,11 @@ export const STATUS_LABELS = {
   disbursement_pending: "Disbursement pending",
   active: "Active",
   repayment_pending: "Repayment pending",
+  forfeiture_pending: "Forfeiture pending",
   edit_requested: "Edit requested",
   cancelled: "Cancelled",
   repaid: "Repaid",
+  forfeited: "Forfeited",
 };
 
 const PAYOUT_PROVIDER_LABELS = {
@@ -128,6 +134,17 @@ export default function LoanTracker({
             </p>
             <p className="text-slate-600">Due: {loan.repayment_date}</p>
             <RepaymentCountdown loan={loan} compact />
+            {(loan.status === "repaid" || loan.status === "forfeited") && (
+              <p className="text-xs font-medium text-slate-600">
+                {loan.status === "repaid"
+                  ? `Settled in cash${loan.settled_at ? ` · ${new Date(loan.settled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}`
+                  : `Settled via collateral forfeit${loan.settled_at ? ` · ${new Date(loan.settled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}${
+                      Number(loan.shortfall_outstanding || 0) > 0
+                        ? ` · shortfall Mwk ${Number(loan.shortfall_outstanding).toLocaleString()} still owed`
+                        : ""
+                    }`}
+              </p>
+            )}
 
             {loan.payout_method && (
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
@@ -168,9 +185,11 @@ export default function LoanTracker({
                   <option value="disbursement_pending">Disbursement pending</option>
                   <option value="active">Active</option>
                   <option value="repayment_pending">Repayment pending</option>
+                  <option value="forfeiture_pending">Forfeiture pending</option>
                   <option value="edit_requested">Edit requested</option>
                   <option value="cancelled">Cancelled</option>
                   <option value="repaid">Repaid</option>
+                  <option value="forfeited">Forfeited</option>
                 </select>
               ) : (
                 <span
@@ -207,6 +226,16 @@ export default function LoanTracker({
                     <button onClick={() => onAdminAction("verify_repayment", loan)} className="px-3 py-1 rounded-full text-xs bg-indigo-600 text-white">
                       Verify repayment
                     </button>
+                  )}
+                  {loan.status === "forfeiture_pending" && (
+                    <button onClick={() => onAdminAction("review_forfeiture", loan)} className="px-3 py-1 rounded-full text-xs bg-orange-600 text-white">
+                      Review forfeiture
+                    </button>
+                  )}
+                  {loan.status === "forfeited" && (
+                    <span className="px-3 py-1 rounded-full text-xs bg-slate-800 text-white">
+                      Settled via collateral
+                    </span>
                   )}
                   {loan.status === "edit_requested" && (
                     <button onClick={() => onAdminAction("reapprove", loan)} className="px-3 py-1 rounded-full text-xs bg-green-600 text-white">

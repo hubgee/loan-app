@@ -89,8 +89,17 @@ create table public.loan_applications (
   borrower_message     text,
   borrower_decided_at  timestamptz,
   admin_seen           boolean not null default false,
+  settlement_method    text check (settlement_method in ('cash','collateral_forfeit')),
+  settled_at           timestamptz,
+  settled_by           uuid references public.profiles(id) on delete set null,
+  forfeiture_requested_at timestamptz,
+  forfeiture_approved_at  timestamptz,
+  forfeiture_declined_at  timestamptz,
+  forfeiture_reason    text,
+  shortfall_outstanding numeric(12,2),
+  shortfall_written_off boolean not null default false,
   status               text not null default 'pending'
-                        check (status in ('pending','approved','confirmed','disbursement_pending','active','repayment_pending','edit_requested','cancelled','repaid')),
+                        check (status in ('pending','approved','confirmed','disbursement_pending','active','repayment_pending','forfeiture_pending','edit_requested','cancelled','repaid','forfeited')),
   processed_by         uuid,
   user_id              uuid references public.profiles(id) on delete set null,
   created_at           timestamptz not null default now(),
@@ -105,7 +114,7 @@ create index if not exists loan_applications_user_id_idx
 
 create unique index if not exists loan_applications_one_active_per_user
   on public.loan_applications (user_id)
-  where status in ('pending', 'approved', 'confirmed', 'disbursement_pending', 'active', 'repayment_pending', 'edit_requested');
+  where status in ('pending', 'approved', 'confirmed', 'disbursement_pending', 'active', 'repayment_pending', 'forfeiture_pending', 'edit_requested');
 
 -- ----------------------------------------------------------------
 -- 3) RLS helper functions
@@ -296,6 +305,22 @@ create policy "Borrowers can submit repayment"
   with check (
     user_id = auth.uid()
     and status = 'repayment_pending'
+  );
+
+-- Borrower requests collateral forfeiture: active -> forfeiture_pending only.
+-- Admin approve/decline rides on "Admins can update applications".
+drop policy if exists "Borrowers can request forfeiture" on public.loan_applications;
+create policy "Borrowers can request forfeiture"
+  on public.loan_applications
+  for update to authenticated
+  using (
+    user_id = auth.uid()
+    and status = 'active'
+    and public.is_active_user()
+  )
+  with check (
+    user_id = auth.uid()
+    and status = 'forfeiture_pending'
   );
 
 -- ----------------------------------------------------------------

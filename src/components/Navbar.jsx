@@ -32,6 +32,7 @@ export default function Navbar() {
           "disbursement_pending",
           "active",
           "repayment_pending",
+          "forfeiture_pending",
           "edit_requested",
         ])
         .limit(1)

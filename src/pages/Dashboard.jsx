@@ -5,6 +5,7 @@ import LoanTracker from "../components/LoanTracker";
 import LoanDetailView from "../components/LoanDetailView";
 import DisburseModal from "../components/DisburseModal";
 import VerifyRepaymentModal from "../components/VerifyRepaymentModal";
+import ForfeitureReviewModal from "../components/ForfeitureReviewModal";
 import { supabase } from "../api/supabaseClient";
 import { logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [detailIndex, setDetailIndex] = useState(null);
   const [disburseLoan, setDisburseLoan] = useState(null);
   const [verifyLoan, setVerifyLoan] = useState(null);
+  const [forfeitLoan, setForfeitLoan] = useState(null);
 
   // Filtering + pagination controls
   const [search, setSearch] = useState("");
@@ -57,6 +59,11 @@ export default function Dashboard() {
         borrower_message: l.borrower_message,
         borrower_decided_at: l.borrower_decided_at,
         admin_seen: l.admin_seen,
+        settlement_method: l.settlement_method,
+        settled_at: l.settled_at,
+        forfeiture_reason: l.forfeiture_reason,
+        forfeiture_requested_at: l.forfeiture_requested_at,
+        shortfall_outstanding: l.shortfall_outstanding,
         collateral_type: l.collateral_type,
         collateral_description: l.collateral_description,
         collateral_value: l.collateral_value,
@@ -76,9 +83,11 @@ export default function Dashboard() {
         disbursement_pending: applications.filter((l) => l.status === "disbursement_pending").length,
         active: applications.filter((l) => l.status === "active").length,
         repayment_pending: applications.filter((l) => l.status === "repayment_pending").length,
+        forfeiture_pending: applications.filter((l) => l.status === "forfeiture_pending").length,
         edit_requested: applications.filter((l) => l.status === "edit_requested").length,
         needsAttention: applications.filter((l) => l.admin_seen === false).length,
         repaid: applications.filter((l) => l.status === "repaid").length,
+        forfeited: applications.filter((l) => l.status === "forfeited").length,
       });
     } catch (err) {
       console.error("Failed to load loans", err);
@@ -171,9 +180,13 @@ export default function Dashboard() {
         setVerifyLoan(loan);
         setActing(null);
         return;
+      } else if (action === "review_forfeiture") {
+        setForfeitLoan(loan);
+        setActing(null);
+        return;
       } else if (action === "repaid") {
         toStatus = "repaid"; eventAction = "repaid";
-        patch = { ...patch, status: "repaid" };
+        patch = { ...patch, status: "repaid", settlement_method: "cash", settled_at: new Date().toISOString(), settled_by: user.id };
       } else if (action === "acknowledge") {
         patch = { ...patch, admin_seen: true };
       }
@@ -221,6 +234,7 @@ export default function Dashboard() {
             stats.disbursement_pending > 0 && `${stats.disbursement_pending} disbursement issue${stats.disbursement_pending > 1 ? "s" : ""}`,
             stats.active > 0 && `${stats.active} active — receipt confirmed`,
             stats.repayment_pending > 0 && `${stats.repayment_pending} repayment${stats.repayment_pending > 1 ? "s" : ""} to verify`,
+            stats.forfeiture_pending > 0 && `${stats.forfeiture_pending} forfeiture${stats.forfeiture_pending > 1 ? "s" : ""} to review`,
           ]
             .filter(Boolean)
             .join(" • ")}
@@ -250,7 +264,7 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm">
-          {["all", "pending", "approved", "confirmed", "disbursement_pending", "active", "repayment_pending", "edit_requested", "cancelled", "repaid"].map((s) => (
+          {["all", "pending", "approved", "confirmed", "disbursement_pending", "active", "repayment_pending", "forfeiture_pending", "edit_requested", "cancelled", "repaid", "forfeited"].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -354,6 +368,10 @@ export default function Dashboard() {
 
       {verifyLoan && (
         <VerifyRepaymentModal loan={verifyLoan} onClose={() => setVerifyLoan(null)} onDone={load} />
+      )}
+
+      {forfeitLoan && (
+        <ForfeitureReviewModal loan={forfeitLoan} onClose={() => setForfeitLoan(null)} onDone={load} />
       )}
 
       {detailIndex !== null && filteredLoans[detailIndex] && (

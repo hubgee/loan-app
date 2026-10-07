@@ -11,7 +11,7 @@ export function daysUntil(dateStr) {
 export function getRepaymentCountdown(loan) {
   if (!loan?.repayment_date) return null;
   // Countdown is only meaningful once the loan is moving toward repayment.
-  if (["pending", "approved", "edit_requested", "cancelled", "repaid"].includes(loan.status)) {
+  if (["pending", "approved", "edit_requested", "cancelled", "repaid", "forfeited"].includes(loan.status)) {
     return null;
   }
   const days = daysUntil(loan.repayment_date);
@@ -35,6 +35,9 @@ export function getRepaymentCountdown(loan) {
 
   if (loan.status === "repayment_pending") {
     text += " · waiting for admin verification";
+  }
+  if (loan.status === "forfeiture_pending") {
+    text += " · forfeiture awaiting admin review";
   }
   return { days, text, tone };
 }

@@ -6,12 +6,13 @@ import LoanEditModal from "../components/LoanEditModal";
 import LoanTimeline from "../components/LoanTimeline";
 import ConfirmReceiptPanel from "../components/ConfirmReceiptPanel";
 import SubmitRepaymentModal from "../components/SubmitRepaymentModal";
+import ForfeitCollateralModal from "../components/ForfeitCollateralModal";
 import RepaymentCountdown from "../components/RepaymentCountdown";
 import { supabase } from "../api/supabaseClient";
 import { calcLoan, logLoanEvent } from "../api/loanDecisions";
 import { useAuth } from "../auth/useAuth";
 
-const ACTIVE_STATUSES = ["pending", "approved", "confirmed", "edit_requested", "disbursement_pending", "active", "repayment_pending"];
+const ACTIVE_STATUSES = ["pending", "approved", "confirmed", "edit_requested", "disbursement_pending", "active", "repayment_pending", "forfeiture_pending"];
 
 function mapRow(l) {
   return {
@@ -38,6 +39,10 @@ function mapRow(l) {
     shortfall_acknowledged: l.shortfall_acknowledged,
     borrower_message: l.borrower_message,
     borrower_decided_at: l.borrower_decided_at,
+    settlement_method: l.settlement_method,
+    settled_at: l.settled_at,
+    forfeiture_reason: l.forfeiture_reason,
+    shortfall_outstanding: l.shortfall_outstanding,
   };
 }
 
@@ -52,6 +57,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [showRepayment, setShowRepayment] = useState(false);
+  const [showForfeit, setShowForfeit] = useState(false);
   const [editFileCount, setEditFileCount] = useState(0);
 
   const openEdit = async () => {
@@ -77,7 +83,7 @@ export default function UserDashboard({ initialTab = "apply" }) {
 
     const { data: active } = await supabase
       .from("loan_applications")
-      .select("id, status, total_repayment, repayment_date, borrower_message")
+      .select("id, status, total_repayment, repayment_date, borrower_message, settlement_method, settled_at, shortfall_outstanding")
       .eq("user_id", user.id)
       .in("status", ACTIVE_STATUSES)
       .order("created_at", { ascending: false })
@@ -254,6 +260,10 @@ export default function UserDashboard({ initialTab = "apply" }) {
       return { title: "Active Loan", body: "Send repayment externally, then submit the reference number here.", icon: "📋" };
     if (loan.status === "repayment_pending")
       return { title: "Repayment submitted", body: "Admin is verifying your repayment reference.", icon: "🔍" };
+    if (loan.status === "forfeiture_pending")
+      return { title: "Forfeiture requested", body: "Admin is reviewing your request to settle with collateral.", icon: "🏠" };
+    if (loan.status === "forfeited")
+      return { title: "Settled via collateral", body: "This loan was closed by forfeiting your collateral.", icon: "🤝" };
     if (loan.status === "edit_requested")
       return { title: "Edit sent — waiting for admin", body: "Admin is reviewing your requested changes. You will confirm again once re-approved.", icon: "✏️" };
     return { title: "Active Loan", body: "Repay on time to unlock higher limits.", icon: "📋" };
@@ -301,12 +311,40 @@ export default function UserDashboard({ initialTab = "apply" }) {
             )}
 
             {activeLoan.status === "active" && fullActiveLoan && (
-              <button
-                onClick={() => setShowRepayment(true)}
-                className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold"
-              >
-                Submit Repayment
-              </button>
+              <>
+                <button
+                  onClick={() => setShowRepayment(true)}
+                  className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold"
+                >
+                  Submit Repayment
+                </button>
+                <button
+                  onClick={() => setShowForfeit(true)}
+                  className="w-full py-2.5 rounded-xl bg-white border border-orange-300 text-orange-700 text-sm font-semibold"
+                >
+                  Cannot repay — forfeit collateral
+                </button>
+              </>
+            )}
+
+            {activeLoan.status === "forfeiture_pending" && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-sm text-orange-800">
+                Forfeiture requested — awaiting admin review. You cannot submit a cash repayment
+                while this is pending.
+              </div>
+            )}
+
+            {activeLoan.status === "forfeited" && (
+              <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm text-slate-700">
+                Settled via collateral forfeit
+                {activeLoan.settled_at
+                  ? ` · ${formatDate(activeLoan.settled_at)}`
+                  : ""}
+                {Number(activeLoan.shortfall_outstanding || 0) > 0
+                  ? ` · shortfall Mkw ${Number(activeLoan.shortfall_outstanding).toLocaleString()} still owed`
+                  : " · no shortfall"}
+                .
+              </div>
             )}
 
             {activeLoan.status === "approved" && fullActiveLoan && (
@@ -401,6 +439,10 @@ export default function UserDashboard({ initialTab = "apply" }) {
 
       {showRepayment && fullActiveLoan && (
         <SubmitRepaymentModal loan={fullActiveLoan} onClose={() => setShowRepayment(false)} onDone={load} />
+      )}
+
+      {showForfeit && fullActiveLoan && (
+        <ForfeitCollateralModal loan={fullActiveLoan} onClose={() => setShowForfeit(false)} onDone={load} />
       )}
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50">

@@ -10,6 +10,15 @@ const ACTION_LABELS = {
   re_approved: "Re-approved by admin",
   acknowledged: "Reviewed by admin",
   repaid: "Marked repaid",
+  disbursement_submitted: "Disbursement submitted by admin",
+  receipt_confirmed: "Receipt confirmed by borrower",
+  issue_reported: "Issue reported by borrower",
+  repayment_submitted: "Repayment submitted by borrower",
+  repayment_confirmed: "Repayment confirmed by admin",
+  repayment_rejected: "Repayment rejected by admin",
+  forfeiture_requested: "Collateral forfeiture requested by borrower",
+  forfeiture_approved: "Collateral forfeiture approved by admin",
+  forfeiture_declined: "Collateral forfeiture declined by admin",
 };
 
 export default function LoanTimeline({ loanId }) {

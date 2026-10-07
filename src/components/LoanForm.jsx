@@ -271,6 +271,7 @@ export default function LoanForm({ onAddLoan }) {
         "disbursement_pending",
         "active",
         "repayment_pending",
+        "forfeiture_pending",
         "edit_requested",
       ])
       .maybeSingle();

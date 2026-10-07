@@ -11,9 +11,11 @@ const STATUS_PILL = {
   disbursement_pending: "bg-purple-100 text-purple-800",
   active: "bg-indigo-100 text-indigo-800",
   repayment_pending: "bg-yellow-100 text-yellow-800",
+  forfeiture_pending: "bg-orange-100 text-orange-800",
   edit_requested: "bg-orange-100 text-orange-800",
   cancelled: "bg-slate-200 text-slate-700",
   repaid: "bg-indigo-100 text-indigo-800",
+  forfeited: "bg-slate-800 text-white",
 };
 
 const STATUS_PROGRESS = {
@@ -24,8 +26,10 @@ const STATUS_PROGRESS = {
   disbursement_pending: "75%",
   active: "85%",
   repayment_pending: "92%",
+  forfeiture_pending: "92%",
   cancelled: "100%",
   repaid: "100%",
+  forfeited: "100%",
 };
 
 const DURATION_LABELS = { "1_week": "1 Week", "2_weeks": "2 Weeks", "1_month": "1 Month" };
@@ -142,6 +146,25 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
                   <p className="text-sm text-orange-900">“{loan.borrower_message}”</p>
                 </section>
               )}
+              {(loan.status === "repaid" || loan.status === "forfeited") && (
+                <section className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Settlement</h4>
+                  <p>
+                    Method:{" "}
+                    {loan.status === "repaid" ? "Cash repayment" : "Collateral forfeiture"}
+                  </p>
+                  {loan.settled_at && (
+                    <p>Settled: {formatDate(loan.settled_at)}</p>
+                  )}
+                  {loan.status === "forfeited" &&
+                    Number(loan.shortfall_outstanding || 0) > 0 && (
+                      <p className="text-amber-700">
+                        Shortfall Mwk {Number(loan.shortfall_outstanding).toLocaleString()} still
+                        owed.
+                      </p>
+                    )}
+                </section>
+              )}
             </div>
             <div className="space-y-4">
               <section className={`border rounded-xl p-3 text-sm ${coversTotal ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
@@ -167,6 +190,9 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
                   )}
                   {loan.status === "repayment_pending" && (
                     <button disabled={acting === loan.id} onClick={() => onAdminAction("verify_repayment", loan)} className="px-4 py-2 rounded-full text-sm bg-indigo-600 text-white disabled:opacity-50">Verify repayment</button>
+                  )}
+                  {loan.status === "forfeiture_pending" && (
+                    <button disabled={acting === loan.id} onClick={() => onAdminAction("review_forfeiture", loan)} className="px-4 py-2 rounded-full text-sm bg-orange-600 text-white disabled:opacity-50">Review forfeiture</button>
                   )}
                   {loan.admin_seen === false && (
                     <button disabled={acting === loan.id} onClick={() => onAdminAction("acknowledge", loan)} className="px-4 py-2 rounded-full text-sm bg-white border border-slate-300 disabled:opacity-50">Mark reviewed</button>
