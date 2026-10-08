@@ -80,7 +80,7 @@ export default function Navbar() {
       </button>
 
       <ul
-        className={`md:ml-auto md:static bg-indigo-600 md:bg-transparent left-0 w-full md:w-auto md:flex md:space-x-4 md:items-center transition-all duration-300 ${
+        className={`absolute md:static md:ml-auto md:bg-transparent left-0 w-full md:w-auto bg-indigo-600 md:flex md:space-x-4 md:items-center transition-all duration-300 ${
           open ? "top-14" : "top-[-400px]"
         }`}
       >
