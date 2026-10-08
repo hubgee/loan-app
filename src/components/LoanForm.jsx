@@ -398,11 +398,11 @@ export default function LoanForm({ onAddLoan }) {
 
   if (!user) {
     return (
-      <div className="space-y-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
-        <h2 className="text-lg font-bold text-slate-800">Loan Application</h2>
-        <p className="text-slate-600 text-sm">
-          Please <Link to="/login" className="text-indigo-600 underline">log in</Link> or{" "}
-          <Link to="/signup" className="text-indigo-600 underline">sign up</Link> to apply.
+      <div className="space-y-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 text-center">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Loan Application</h2>
+        <p className="text-slate-600 dark:text-slate-300 text-sm">
+          Please <Link to="/login" className="text-indigo-600 dark:text-indigo-400 underline">log in</Link> or{" "}
+          <Link to="/signup" className="text-indigo-600 dark:text-indigo-400 underline">sign up</Link> to apply.
         </p>
       </div>
     );
@@ -410,12 +410,12 @@ export default function LoanForm({ onAddLoan }) {
 
   if (!isActive && !isAdmin) {
     return (
-      <div className="space-y-4 bg-amber-50 p-6 rounded-2xl border border-amber-200 text-center">
-        <h2 className="text-lg font-bold text-slate-800">Pending activation</h2>
-        <p className="text-slate-600 text-sm">
+      <div className="space-y-4 bg-amber-50 dark:bg-amber-900/30 p-6 rounded-2xl border border-amber-200 dark:border-amber-700 text-center">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Pending activation</h2>
+        <p className="text-slate-600 dark:text-slate-300 text-sm">
           Your account is awaiting admin activation. You&apos;ll be able to apply once activated.
         </p>
-        <Link to="/pending" className="text-indigo-600 underline text-sm">
+        <Link to="/pending" className="text-indigo-600 dark:text-indigo-400 underline text-sm">
           View status
         </Link>
       </div>
@@ -426,22 +426,22 @@ export default function LoanForm({ onAddLoan }) {
     formData.payoutMethod === "bank" ? BANK_PROVIDERS : MOBILE_PROVIDERS;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-lg font-bold">Loan Application</h2>
+    <form onSubmit={handleSubmit} className="space-y-4 bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Loan Application</h2>
 
-      <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className="w-full border rounded px-3 py-2" required />
-      <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" className="w-full border rounded px-3 py-2" />
-      <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" className="w-full border rounded px-3 py-2" />
-      <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="Loan Amount" className="w-full border rounded px-3 py-2" required />
+      <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+      <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+      <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+      <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="Loan Amount" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
 
-      <select name="duration" value={formData.duration} onChange={handleChange} className="w-full border rounded px-3 py-2" required>
+      <select name="duration" value={formData.duration} onChange={handleChange} className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100" required>
         <option value="1_week">1 Week (15% interest)</option>
         <option value="2_weeks">2 Weeks (30% interest)</option>
         <option value="1_month">1 Month (60% interest)</option>
       </select>
 
       {formData.amount && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm">
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded p-3 text-sm text-yellow-800 dark:text-yellow-200">
           <p>Interest: {formatMwk(interest)}</p>
           <p>Total to repay: {formatMwk(totalRepayment)}</p>
           <p>Repayment date: {repaymentDate}</p>
@@ -449,22 +449,22 @@ export default function LoanForm({ onAddLoan }) {
       )}
 
       {/* ---- Preferred payment details ---- */}
-      <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold text-slate-800">
+      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100">
           Where should we send the money? <span className="text-red-500">*</span>
         </h3>
         {loadingLast ? (
-          <p className="text-sm text-slate-500">Checking last payment details…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Checking last payment details…</p>
         ) : lastPayout ? (
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
-            <p className="text-sm text-slate-600">
-              Last used: <span className="font-medium text-slate-800">{payoutSummary(lastPayout)}</span>
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Last used: <span className="font-medium text-slate-800 dark:text-slate-100">{payoutSummary(lastPayout)}</span>
             </p>
             <div className="flex gap-2 flex-wrap">
-              <button type="button" onClick={() => setUseLast(true)} className={`px-4 py-2 rounded-full text-sm font-medium ${useLast ? "bg-indigo-600 text-white" : "bg-white border border-slate-300 text-slate-700"}`}>
+              <button type="button" onClick={() => setUseLast(true)} className={`px-4 py-2 rounded-full text-sm font-medium ${useLast ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
                 Use same details
               </button>
-              <button type="button" onClick={() => setUseLast(false)} className={`px-4 py-2 rounded-full text-sm font-medium ${!useLast ? "bg-indigo-600 text-white" : "bg-white border border-slate-300 text-slate-700"}`}>
+              <button type="button" onClick={() => setUseLast(false)} className={`px-4 py-2 rounded-full text-sm font-medium ${!useLast ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
                 Enter different details
               </button>
             </div>
@@ -476,17 +476,17 @@ export default function LoanForm({ onAddLoan }) {
             <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Payment method">
               {[{ id: "mobile_money", label: "📱 Mobile Money" }, { id: "bank", label: "🏦 Bank" }].map((m) => (
                 <button key={m.id} type="button" role="tab" aria-selected={formData.payoutMethod === m.id} onClick={() => setPayoutMethod(m.id)}
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${formData.payoutMethod === m.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"}`}>
+                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${formData.payoutMethod === m.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
                   {m.label}
                 </button>
               ))}
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700">{formData.payoutMethod === "bank" ? "Choose your bank" : "Choose provider"}</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formData.payoutMethod === "bank" ? "Choose your bank" : "Choose provider"}</p>
               <div className="flex gap-2 flex-wrap">
                 {providerOptions.map((p) => (
                   <button key={p.id} type="button" onClick={() => setFormData((prev) => ({ ...prev, payoutProvider: p.id }))}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.payoutProvider === p.id ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"}`}>
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.payoutProvider === p.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
                     {p.label}
                   </button>
                 ))}
@@ -494,14 +494,14 @@ export default function LoanForm({ onAddLoan }) {
             </div>
             {formData.payoutMethod === "mobile_money" ? (
               <div className="space-y-3">
-                <input type="tel" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Mobile money phone number (e.g. 0888 123 456)" className="w-full border rounded px-3 py-2" required />
-                <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Registered name on the account" className="w-full border rounded px-3 py-2" required />
+                <input type="tel" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Mobile money phone number (e.g. 0888 123 456)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+                <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Registered name on the account" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
               </div>
             ) : (
               <div className="space-y-3">
-                <input type="text" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Bank account number" className="w-full border rounded px-3 py-2" required />
-                <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Account name" className="w-full border rounded px-3 py-2" required />
-                <input type="text" name="payoutBranch" value={formData.payoutBranch} onChange={handleChange} placeholder="Branch (e.g. Lilongwe)" className="w-full border rounded px-3 py-2" required />
+                <input type="text" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Bank account number" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+                <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Account name" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+                <input type="text" name="payoutBranch" value={formData.payoutBranch} onChange={handleChange} placeholder="Branch (e.g. Lilongwe)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
               </div>
             )}
           </>
@@ -509,22 +509,22 @@ export default function LoanForm({ onAddLoan }) {
       </div>
 
       {/* ---- Collateral ---- */}
-      <div className="border border-slate-200 rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold text-slate-800">Collateral <span className="text-red-500">*</span></h3>
-        <p className="text-xs text-slate-500">Must be worth at least the amount you receive. Photos/documents: {COLLATERAL_MIN_FILES}–{COLLATERAL_MAX_FILES} required.</p>
+      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100">Collateral <span className="text-red-500">*</span></h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Must be worth at least the amount you receive. Photos/documents: {COLLATERAL_MIN_FILES}–{COLLATERAL_MAX_FILES} required.</p>
         <div className="flex gap-2 flex-wrap">
           {COLLATERAL_TYPES.map((t) => (
             <button key={t.id} type="button" onClick={() => setFormData((prev) => ({ ...prev, collateralType: t.id }))}
-              className={`px-3 py-1.5 rounded-full text-sm border ${formData.collateralType === t.id ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-300 text-slate-700"}`}>
+              className={`px-3 py-1.5 rounded-full text-sm border ${formData.collateralType === t.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
               {t.label}
             </button>
           ))}
         </div>
-        <textarea name="collateralDescription" value={formData.collateralDescription} onChange={handleChange} placeholder="Describe the collateral (e.g. 1 acre in Area 25, plot no…, Honda Fit 2012 reg…)" className="w-full border rounded px-3 py-2" required />
-        <input type="number" name="collateralValue" value={formData.collateralValue} onChange={handleChange} placeholder="Estimated value (MWK)" className="w-full border rounded px-3 py-2" required />
+        <textarea name="collateralDescription" value={formData.collateralDescription} onChange={handleChange} placeholder="Describe the collateral (e.g. 1 acre in Area 25, plot no…, Honda Fit 2012 reg…)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+        <input type="number" name="collateralValue" value={formData.collateralValue} onChange={handleChange} placeholder="Estimated value (MWK)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
 
         {coverage && Number(formData.amount) > 0 && Number(formData.collateralValue) > 0 && (
-          <div className={`rounded p-3 text-sm border ${!coverage.passesFloor ? "bg-red-50 border-red-200 text-red-800" : coverage.coversTotal ? "bg-green-50 border-green-200 text-green-800" : "bg-amber-50 border-amber-200 text-amber-800"}`}>
+          <div className={`rounded p-3 text-sm border ${!coverage.passesFloor ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200" : coverage.coversTotal ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200" : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200"}`}>
             {!coverage.passesFloor ? (
               <p>❌ Below floor: collateral must at least cover Mwk {Number(formData.amount).toLocaleString()} you receive.</p>
             ) : coverage.coversTotal ? (
@@ -536,16 +536,16 @@ export default function LoanForm({ onAddLoan }) {
         )}
 
         <div>
-          <label className="block mb-1 text-sm font-medium">Collateral photos/documents ({formData.collateralFiles.length}/{COLLATERAL_MAX_FILES})</label>
-          <p className="text-xs text-slate-500 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
+          <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Collateral photos/documents ({formData.collateralFiles.length}/{COLLATERAL_MAX_FILES})</label>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
           <div className="flex gap-2 flex-wrap">
             {isMobile && formData.collateralFiles.length < COLLATERAL_MAX_FILES && (
-              <label className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium cursor-pointer">
+              <label className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium cursor-pointer">
                 📷 Take photo
                 <input type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
               </label>
             )}
-            <label className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium cursor-pointer bg-white">
+            <label className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium cursor-pointer bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
               📁 Choose files
               <input type="file" name="collateralFiles" accept="image/*,.pdf" multiple onChange={handleChange} className="hidden" />
             </label>
@@ -553,9 +553,9 @@ export default function LoanForm({ onAddLoan }) {
           {formData.collateralFiles.length > 0 && (
             <ul className="mt-2 space-y-1 text-sm">
               {formData.collateralFiles.map((f, i) => (
-                <li key={i} className="flex items-center justify-between bg-slate-50 border rounded px-2 py-1">
+                <li key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded px-2 py-1 text-slate-700 dark:text-slate-300">
                   <span className="truncate">{f.name}</span>
-                  <button type="button" onClick={() => removeCollateralFile(i)} className="text-red-600 px-2">✕</button>
+                  <button type="button" onClick={() => removeCollateralFile(i)} className="text-red-600 dark:text-red-400 px-2">✕</button>
                 </li>
               ))}
             </ul>
@@ -563,7 +563,7 @@ export default function LoanForm({ onAddLoan }) {
         </div>
 
         {coverage && coverage.shortfall > 0 && coverage.passesFloor && (
-          <label className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded p-3">
+          <label className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded p-3 text-slate-700 dark:text-slate-300">
             <input type="checkbox" checked={formData.ackShortfall} onChange={(e) => setFormData((prev) => ({ ...prev, ackShortfall: e.target.checked }))} className="mt-1" />
             <span>I understand if I forfeit, I still owe the shortfall of {formatMwk(coverage.shortfall)}.</span>
           </label>
@@ -571,7 +571,7 @@ export default function LoanForm({ onAddLoan }) {
       </div>
 
       <div>
-        <label className="block mb-1 font-medium">Upload National ID (PDF/JPG/PNG)</label>
+        <label className="block mb-1 font-medium text-slate-700 dark:text-slate-300">Upload National ID (PDF/JPG/PNG)</label>
         <input type="file" name="nationalId" accept=".pdf,.jpg,.jpeg,.png" onChange={handleChange} className="w-full" required />
       </div>
 
@@ -579,7 +579,7 @@ export default function LoanForm({ onAddLoan }) {
         {submitting ? "Submitting..." : "Submit Application"}
       </button>
 
-      {message && <p className="text-sm text-center text-green-700 font-medium">{message}</p>}
+      {message && <p className="text-sm text-center text-green-700 dark:text-green-300 font-medium">{message}</p>}
     </form>
   );
 }

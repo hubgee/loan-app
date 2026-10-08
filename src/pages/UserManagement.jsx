@@ -48,10 +48,10 @@ const load = async () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-6">
       <div className="max-w-5xl mx-auto space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold text-slate-800">User Management</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">User Management</h1>
           <div className="flex gap-2 flex-wrap">
             {["all", "pending", "active", "admin"].map((f) => (
               <button
@@ -60,7 +60,7 @@ const load = async () => {
                 className={`px-3 py-1.5 rounded-full text-sm capitalize ${
                   filter === f
                     ? "bg-indigo-600 text-white"
-                    : "bg-white text-slate-700 border border-slate-200"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                 }`}
               >
                 {f}
@@ -70,20 +70,20 @@ const load = async () => {
         </div>
 
         {error && (
-          <p className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3">
+          <p className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 text-sm rounded p-3">
             {error}
           </p>
         )}
 
         {loading ? (
-          <p className="text-slate-500">Loading users...</p>
+          <p className="text-slate-500 dark:text-slate-400">Loading users...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-slate-500">No users match this filter.</p>
+          <p className="text-slate-500 dark:text-slate-400">No users match this filter.</p>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
-                <tr className="text-left text-slate-500 border-b border-slate-200">
+                <tr className="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
                   <th className="p-3">Email</th>
                   <th className="p-3">Role</th>
                   <th className="p-3">Active</th>
@@ -93,16 +93,16 @@ const load = async () => {
               </thead>
               <tbody>
                 {filtered.map((u) => (
-                  <tr key={u.id} className="border-b border-slate-100 last:border-0">
-                    <td className="p-3 font-medium text-slate-800">
+                  <tr key={u.id} className="border-b border-slate-100 dark:border-slate-700 last:border-0">
+                    <td className="p-3 font-medium text-slate-800 dark:text-slate-100">
                       {u.email ?? u.id}
                     </td>
                     <td className="p-3">
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
                           u.role === "admin"
-                            ? "bg-indigo-100 text-indigo-700"
-                            : "bg-slate-100 text-slate-600"
+                            ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200"
+                            : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                         }`}
                       >
                         {u.role}
@@ -112,14 +112,14 @@ const load = async () => {
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
                           u.is_active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200"
+                            : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-200"
                         }`}
                       >
                         {u.is_active ? "Active" : "Pending"}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-500">
+                    <td className="p-3 text-slate-500 dark:text-slate-400">
                       {new Date(u.created_at).toLocaleDateString()}
                     </td>
                     <td className="p-3">
@@ -128,7 +128,7 @@ const load = async () => {
                           disabled={updating === u.id}
                           onClick={() => toggleActive(u)}
                           className={`relative w-11 h-6 rounded-full transition-colors ${
-                            u.is_active ? "bg-green-600" : "bg-slate-300"
+                            u.is_active ? "bg-green-600" : "bg-slate-300 dark:bg-slate-600"
                           } disabled:opacity-50`}
                           title={u.is_active ? "Deactivate" : "Activate"}
                         >

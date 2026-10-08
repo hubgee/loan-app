@@ -31,12 +31,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-800 mb-1">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 flex items-center justify-center">
+      <div className="max-w-md w-full bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">
           Borrower Login
         </h1>
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Don&apos;t have an account? Sign up, then wait for activation.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -46,7 +46,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
-            className="w-full border border-slate-200 rounded px-3 py-3"
+            className="w-full border border-slate-200 dark:border-slate-700 rounded px-3 py-3 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             required
           />
           <input
@@ -55,10 +55,10 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full border border-slate-200 rounded px-3 py-3"
+            className="w-full border border-slate-200 dark:border-slate-700 rounded px-3 py-3 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             required
           />
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
@@ -67,13 +67,13 @@ export default function Login() {
             {submitting ? "Logging in..." : "Login"}
           </button>
         </form>
-        <p className="text-center text-sm text-slate-500 mt-4">
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-4">
           No account?{" "}
-          <Link to="/signup" className="text-indigo-600 hover:underline">
+          <Link to="/signup" className="text-indigo-600 dark:text-indigo-400 hover:underline">
             Sign up
           </Link>{" "}
           •{" "}
-          <Link to="/" className="text-indigo-600 hover:underline">
+          <Link to="/" className="text-indigo-600 dark:text-indigo-400 hover:underline">
             Back to home
           </Link>
         </p>

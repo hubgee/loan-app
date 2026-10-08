@@ -69,37 +69,37 @@ export default function SubmitRepaymentModal({ loan, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
-        <h3 className="text-lg font-bold text-slate-800">Submit Repayment</h3>
-        <p className="text-sm text-slate-600">Enter details from your mobile money / bank receipt so admin can verify.</p>
+      <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Submit Repayment</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Enter details from your mobile money / bank receipt so admin can verify.</p>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-xs font-medium text-slate-600">Reference / Transaction ID</label>
-          <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" placeholder="e.g. MP241004.0900.B67890" required />
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Reference / Transaction ID</label>
+          <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" placeholder="e.g. MP241004.0900.B67890" required />
 
-          <label className="block text-xs font-medium text-slate-600">Channel used</label>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Channel used</label>
+          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             {CHANNEL_OPTIONS.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
 
-          <label className="block text-xs font-medium text-slate-600">Sender phone / account name (for cross-check)</label>
-          <input value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" placeholder="e.g. 0888123456" />
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Sender phone / account name (for cross-check)</label>
+          <input value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" placeholder="e.g. 0888123456" />
 
-          <label className="block text-xs font-medium text-slate-600">Amount paid</label>
-          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" required />
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Amount paid</label>
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100" required />
           {short && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+            <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded p-2">
               ⚠️ Short payment: you entered {paid.toLocaleString()} of {due.toLocaleString()} due. Admin will see this variance.
             </p>
           )}
 
-          <label className="block text-xs font-medium text-slate-600">Proof (screenshot/receipt)</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Proof (screenshot/receipt)</label>
           <input type="file" accept="image/*,application/pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="w-full text-sm" />
 
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-xl border border-slate-300 text-sm">Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">Cancel</button>
             <button type="submit" disabled={submitting} className="flex-1 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50">{submitting ? "Submitting…" : "Submit repayment"}</button>
           </div>
         </form>

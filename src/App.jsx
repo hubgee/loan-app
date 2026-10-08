@@ -15,7 +15,7 @@ import { AuthProvider } from "./auth/AuthContext";
 function AppContent() {
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <Navbar />
         <div className="p-4 max-w-6xl mx-auto">
           <Routes>

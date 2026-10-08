@@ -89,20 +89,20 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end md:items-center justify-center z-[60] p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 space-y-3 max-h-[92vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 w-full md:max-w-lg rounded-t-2xl md:rounded-2xl p-5 space-y-3 max-h-[92vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-800">Request edit</h3>
-          <button onClick={onClose} className="text-slate-500 text-xl px-2" aria-label="Close">✕</button>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Request edit</h3>
+          <button onClick={onClose} className="text-slate-500 dark:text-slate-400 text-xl px-2" aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input value={form.borrower_name} onChange={(e) => set("borrower_name", e.target.value)} placeholder="Full name" className="w-full border rounded px-3 py-2" required />
+          <input value={form.borrower_name} onChange={(e) => set("borrower_name", e.target.value)} placeholder="Full name" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
           <div className="grid grid-cols-2 gap-2">
-            <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Phone" className="w-full border rounded px-3 py-2" />
-            <input value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="Email" className="w-full border rounded px-3 py-2" />
+            <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Phone" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+            <input value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="Email" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" value={form.amount} onChange={(e) => set("amount", e.target.value)} placeholder="Amount" className="w-full border rounded px-3 py-2" required />
-            <select value={form.duration} onChange={(e) => set("duration", e.target.value)} className="w-full border rounded px-3 py-2">
+            <input type="number" value={form.amount} onChange={(e) => set("amount", e.target.value)} placeholder="Amount" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+            <select value={form.duration} onChange={(e) => set("duration", e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
               <option value="1_week">1 Week (15%)</option>
               <option value="2_weeks">2 Weeks (30%)</option>
               <option value="1_month">1 Month (60%)</option>
@@ -111,15 +111,15 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
           <div className="flex gap-2 flex-wrap">
             {COLLATERAL_TYPES.map((t) => (
               <button key={t.id} type="button" onClick={() => set("collateral_type", t.id)}
-                className={`px-3 py-1.5 rounded-full text-sm border ${form.collateral_type === t.id ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-300"}`}>
+                className={`px-3 py-1.5 rounded-full text-sm border ${form.collateral_type === t.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"}`}>
                 {t.label}
               </button>
             ))}
           </div>
-          <textarea value={form.collateral_description} onChange={(e) => set("collateral_description", e.target.value)} placeholder="Collateral description" className="w-full border rounded px-3 py-2" required />
-          <input type="number" value={form.collateral_value} onChange={(e) => set("collateral_value", e.target.value)} placeholder="Collateral value (MWK)" className="w-full border rounded px-3 py-2" required />
+          <textarea value={form.collateral_description} onChange={(e) => set("collateral_description", e.target.value)} placeholder="Collateral description" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+          <input type="number" value={form.collateral_value} onChange={(e) => set("collateral_value", e.target.value)} placeholder="Collateral value (MWK)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
           {coverage && (
-            <p className="text-xs bg-slate-50 border rounded p-2">
+            <p className="text-xs bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded p-2 text-slate-700 dark:text-slate-300">
               {coverage.passesFloor
                 ? coverage.coversTotal
                   ? `✅ Covers total. Surplus Mwk ${Number(coverage.surplus).toLocaleString()} returnable.`
@@ -128,23 +128,23 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
             </p>
           )}
           <div>
-            <label className="block text-sm font-medium">Add files ({totalFiles}/6, existing {existingFileCount})</label>
-            <p className="text-xs text-slate-500 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Add files ({totalFiles}/6, existing {existingFileCount})</label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
             <div className="flex gap-2 flex-wrap">
               {isMobile && totalFiles < 6 && (
-                <label className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium cursor-pointer">
+                <label className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium cursor-pointer">
                   📷 Take photo
                   <input type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
                 </label>
               )}
-              <label className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium cursor-pointer bg-white">
+              <label className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium cursor-pointer bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
                 📁 Choose files
                 <input type="file" accept="image/*,.pdf" multiple onChange={(e) => set("newFiles", Array.from(e.target.files ?? []).slice(0, 6 - existingFileCount))} className="hidden" />
               </label>
             </div>
           </div>
           {coverage && coverage.shortfall > 0 && (
-            <label className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded p-3">
+            <label className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded p-3 text-slate-700 dark:text-slate-300">
               <input type="checkbox" checked={form.ackShortfall} onChange={(e) => set("ackShortfall", e.target.checked)} className="mt-1" />
               <span>I still owe shortfall of Mwk {Number(coverage.shortfall).toLocaleString()} after forfeit.</span>
             </label>
@@ -152,7 +152,7 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
           <div className="grid grid-cols-2 gap-2">
             {[["mobile_money", "📱 Mobile Money"], ["bank", "🏦 Bank"]].map(([id, label]) => (
               <button key={id} type="button" onClick={() => setForm((p) => ({ ...p, payout_method: id, payout_provider: "" }))}
-                className={`px-3 py-2.5 rounded-xl text-sm font-semibold border ${form.payout_method === id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-300"}`}>
+                className={`px-3 py-2.5 rounded-xl text-sm font-semibold border ${form.payout_method === id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
                 {label}
               </button>
             ))}
@@ -160,16 +160,16 @@ export default function LoanEditModal({ loan, existingFileCount = 0, onClose, on
           <div className="flex gap-2 flex-wrap">
             {providers.map((p) => (
               <button key={p.id} type="button" onClick={() => set("payout_provider", p.id)}
-                className={`px-3 py-1.5 rounded-full text-sm border ${form.payout_provider === p.id ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-300"}`}>
+                className={`px-3 py-1.5 rounded-full text-sm border ${form.payout_provider === p.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"}`}>
                 {p.label}
               </button>
             ))}
           </div>
-          <input value={form.payout_account_number} onChange={(e) => set("payout_account_number", e.target.value)} placeholder="Account/phone number" className="w-full border rounded px-3 py-2" required />
-          <input value={form.payout_account_name} onChange={(e) => set("payout_account_name", e.target.value)} placeholder="Account name" className="w-full border rounded px-3 py-2" required />
-          <textarea value={form.reason} onChange={(e) => set("reason", e.target.value)} placeholder="What should admin change and why? (required)" className="w-full border rounded px-3 py-2" required />
+          <input value={form.payout_account_number} onChange={(e) => set("payout_account_number", e.target.value)} placeholder="Account/phone number" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+          <input value={form.payout_account_name} onChange={(e) => set("payout_account_name", e.target.value)} placeholder="Account name" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+          <textarea value={form.reason} onChange={(e) => set("reason", e.target.value)} placeholder="What should admin change and why? (required)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-slate-300 text-slate-700 font-medium">Back</button>
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium bg-white dark:bg-slate-900">Back</button>
             <button type="submit" disabled={submitting} className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-medium disabled:opacity-50">
               {submitting ? "Sending…" : "Send edit request"}
             </button>

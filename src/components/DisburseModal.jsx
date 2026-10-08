@@ -68,29 +68,29 @@ export default function DisburseModal({ loan, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[80] flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
-        <h3 className="text-lg font-bold text-slate-800">Disburse Funds</h3>
-        <p className="text-sm text-slate-600">Enter the reference number from your mobile money / bank so the borrower can confirm receipt.</p>
+      <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Disburse Funds</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-300">Enter the reference number from your mobile money / bank so the borrower can confirm receipt.</p>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-xs font-medium text-slate-600">Reference / Transaction ID</label>
-          <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" placeholder="e.g. TXN123456" required />
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Reference / Transaction ID</label>
+          <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100" placeholder="e.g. TXN123456" required />
 
-          <label className="block text-xs font-medium text-slate-600">Channel used</label>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Channel used</label>
+          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             {PROVIDER_OPTIONS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
 
-          <label className="block text-xs font-medium text-slate-600">Amount sent</label>
-          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" required />
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Amount sent</label>
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100" required />
 
-          <label className="block text-xs font-medium text-slate-600">Proof (screenshot/receipt)</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Proof (screenshot/receipt)</label>
           <input type="file" accept="image/*,application/pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="w-full text-sm" />
 
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-xl border border-slate-300 text-sm">Cancel</button>
+            <button type="button" onClick={onClose} className="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">Cancel</button>
             <button type="submit" disabled={submitting} className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-50">{submitting ? "Saving…" : "Mark disbursed"}</button>
           </div>
         </form>

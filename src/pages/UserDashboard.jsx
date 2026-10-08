@@ -271,33 +271,33 @@ export default function UserDashboard({ initialTab = "apply" }) {
   const banner = bannerFor(activeLoan);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6 pb-20 md:pb-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-6 pb-20 md:pb-6">
       <div className="max-w-4xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold text-slate-800">My Loans</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">My Loans</h1>
 
         {activeLoan && banner && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 md:p-5 space-y-3">
+          <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-4 md:p-5 space-y-3">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center text-amber-700 dark:text-amber-200">
                   {banner.icon}
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-amber-900">{banner.title}</h3>
-                  <p className="text-amber-800 mt-1">{banner.body}</p>
+                  <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-100">{banner.title}</h3>
+                  <p className="text-amber-800 dark:text-amber-200 mt-1">{banner.body}</p>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm">
-                <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-medium">
+                <span className="bg-amber-100 dark:bg-amber-800/50 text-amber-800 dark:text-amber-100 px-3 py-1 rounded-full font-medium">
                   {activeLoan.status === "pending" ? "Pending Approval" : activeLoan.status.replace("_", " ")}
                 </span>
                 {activeLoan.total_repayment && (
-                  <span className="text-amber-800 font-medium">
+                  <span className="text-amber-800 dark:text-amber-100 font-medium">
                     Total due: Mkw {Number(activeLoan.total_repayment).toLocaleString()}
                   </span>
                 )}
                 {activeLoan.repayment_date && (
-                  <span className="text-amber-800">Due: {formatDate(activeLoan.repayment_date)}</span>
+                  <span className="text-amber-800 dark:text-amber-100">Due: {formatDate(activeLoan.repayment_date)}</span>
                 )}
               </div>
             </div>
@@ -328,14 +328,14 @@ export default function UserDashboard({ initialTab = "apply" }) {
             )}
 
             {activeLoan.status === "forfeiture_pending" && (
-              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 text-sm text-orange-800">
+              <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-xl p-3 text-sm text-orange-800 dark:text-orange-200">
                 Forfeiture requested — awaiting admin review. You cannot submit a cash repayment
                 while this is pending.
               </div>
             )}
 
             {activeLoan.status === "forfeited" && (
-              <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm text-slate-700">
+              <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-300">
                 Settled via collateral forfeit
                 {activeLoan.settled_at
                   ? ` · ${formatDate(activeLoan.settled_at)}`
@@ -348,32 +348,32 @@ export default function UserDashboard({ initialTab = "apply" }) {
             )}
 
             {activeLoan.status === "approved" && fullActiveLoan && (
-              <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-2">
-                <p className="text-sm font-medium text-slate-800">Review your approved loan:</p>
+              <div className="bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 rounded-xl p-3 space-y-2">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">Review your approved loan:</p>
                 {!showCancel ? (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button disabled={acting} onClick={handleConfirm} className="py-3 rounded-xl bg-green-600 text-white font-semibold disabled:opacity-50">
                       {acting ? "Working…" : "✓ Confirm loan"}
                     </button>
-                    <button disabled={acting} onClick={openEdit} className="py-3 rounded-xl bg-white border border-slate-300 font-semibold text-slate-700">
+                    <button disabled={acting} onClick={openEdit} className="py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-300">
                       ✏️ Edit loan
                     </button>
-                    <button disabled={acting} onClick={() => setShowCancel(true)} className="py-3 rounded-xl bg-white border border-red-300 font-semibold text-red-700">
+                    <button disabled={acting} onClick={() => setShowCancel(true)} className="py-3 rounded-xl bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 font-semibold text-red-700 dark:text-red-300">
                       ✕ Cancel loan
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason for cancelling (required)" className="w-full border rounded px-3 py-2 text-sm" />
+                    <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Reason for cancelling (required)" className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
                     <div className="flex gap-2">
-                      <button onClick={() => setShowCancel(false)} className="flex-1 py-2 rounded-xl border border-slate-300 text-sm">Back</button>
+                      <button onClick={() => setShowCancel(false)} className="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">Back</button>
                       <button disabled={acting} onClick={handleCancel} className="flex-1 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-50">
                         {acting ? "Cancelling…" : "Confirm cancel"}
                       </button>
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-slate-500">Confirm triggers disbursement. Edit lets you change amount, duration, payout and contact details.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Confirm triggers disbursement. Edit lets you change amount, duration, payout and contact details.</p>
               </div>
             )}
           </div>
@@ -389,8 +389,8 @@ export default function UserDashboard({ initialTab = "apply" }) {
                 disabled={disabled}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   tab === t.key ? "bg-indigo-600 text-white"
-                  : disabled ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                  : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                  : disabled ? "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
                 }`}
               >
                 {t.label}
@@ -400,14 +400,14 @@ export default function UserDashboard({ initialTab = "apply" }) {
         </div>
 
         {tab === "apply" ? (
-          <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             {activeLoan ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-3">📋</div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
                   {activeLoan.status === "pending" ? "Loan Pending Approval" : `Loan ${activeLoan.status.replace("_", " ")}`}
                 </h3>
-                <p className="text-slate-600 mb-4 max-w-md mx-auto">
+                <p className="text-slate-600 dark:text-slate-300 mb-4 max-w-md mx-auto">
                   {activeLoan.status === "approved"
                     ? "Your loan was approved — use the panel above to confirm, edit or cancel."
                     : "You have an active loan. Finish it before applying again."}
@@ -423,13 +423,13 @@ export default function UserDashboard({ initialTab = "apply" }) {
             )}
           </div>
         ) : loading ? (
-          <p className="text-slate-500">Loading your loans...</p>
+          <p className="text-slate-500 dark:text-slate-400">Loading your loans...</p>
         ) : (
           <LoanTracker loans={loans} editable={false} showTimeline />
         )}
 
-        <p className="text-sm text-slate-500">
-          Need help? <Link to="/Terms-Conditions.pdf" className="text-indigo-600 underline">Terms &amp; Conditions</Link>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Need help? <Link to="/Terms-Conditions.pdf" className="text-indigo-600 dark:text-indigo-400 underline">Terms &amp; Conditions</Link>
         </p>
       </div>
 
@@ -445,12 +445,12 @@ export default function UserDashboard({ initialTab = "apply" }) {
         <ForfeitCollateralModal loan={fullActiveLoan} onClose={() => setShowForfeit(false)} onDone={load} />
       )}
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-2 z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex justify-around py-2 z-50">
         <button onClick={() => { if (activeLoan) return; setTab("apply"); }} disabled={activeLoan}
-          className={`px-4 py-2 text-sm font-medium ${tab === "apply" ? "text-indigo-600" : activeLoan ? "text-slate-400" : "text-slate-500"}`}>
+          className={`px-4 py-2 text-sm font-medium ${tab === "apply" ? "text-indigo-600 dark:text-indigo-400" : activeLoan ? "text-slate-400 dark:text-slate-500" : "text-slate-500 dark:text-slate-400"}`}>
           📝 Apply
         </button>
-        <button onClick={() => setTab("loans")} className={`px-4 py-2 text-sm font-medium ${tab === "loans" ? "text-indigo-600" : "text-slate-500"}`}>
+        <button onClick={() => setTab("loans")} className={`px-4 py-2 text-sm font-medium ${tab === "loans" ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"}`}>
           📄 My Loans
         </button>
       </nav>

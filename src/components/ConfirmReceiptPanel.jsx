@@ -84,8 +84,8 @@ export default function ConfirmReceiptPanel({ loan, onDone }) {
   };
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
-      <p className="text-sm font-semibold text-blue-900">
+    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl p-4 space-y-3">
+      <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
         Admin marked funds as sent. Did you receive them?
       </p>
       {!reporting ? (
@@ -93,20 +93,20 @@ export default function ConfirmReceiptPanel({ loan, onDone }) {
           <button disabled={submitting} onClick={confirmReceived} className="py-3 rounded-xl bg-green-600 text-white font-semibold disabled:opacity-50">
             {submitting ? "Confirming…" : "✓ I received it"}
           </button>
-          <button disabled={submitting} onClick={() => setReporting(true)} className="py-3 rounded-xl bg-white border border-blue-300 text-blue-700 font-semibold disabled:opacity-50">
+          <button disabled={submitting} onClick={() => setReporting(true)} className="py-3 rounded-xl bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-200 font-semibold disabled:opacity-50">
             ⚠ Report issue
           </button>
         </div>
       ) : (
         <div className="space-y-2">
-          <textarea value={issueMessage} onChange={(e) => setIssueMessage(e.target.value)} placeholder="e.g. Funds not reflected yet / Received incorrect amount" className="w-full border rounded px-3 py-2 text-sm" />
+          <textarea value={issueMessage} onChange={(e) => setIssueMessage(e.target.value)} placeholder="e.g. Funds not reflected yet / Received incorrect amount" className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
           <div className="flex gap-2">
-            <button onClick={() => setReporting(false)} className="flex-1 py-2 rounded-xl border border-slate-300 text-sm">Back</button>
+            <button onClick={() => setReporting(false)} className="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">Back</button>
             <button disabled={submitting} onClick={reportIssue} className="flex-1 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-50">Send to admin</button>
           </div>
         </div>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

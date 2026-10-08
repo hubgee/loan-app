@@ -103,20 +103,20 @@ export default function VerifyRepaymentModal({ loan, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[80] flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
-        <h3 className="text-lg font-bold text-slate-800">Verify Repayment</h3>
+      <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Verify Repayment</h3>
         {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>
         ) : !transaction ? (
-          <p className="text-sm text-slate-500">No repayment submission yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">No repayment submission yet.</p>
         ) : (
           <>
             <div className="space-y-1 text-sm">
-              <p>Reference: <span className="font-mono font-semibold">{transaction.reference_number}</span></p>
-              <p>Channel: {transaction.payment_method}</p>
-              <p>Amount: Mkw {paid.toLocaleString()}</p>
+              <p className="text-slate-700 dark:text-slate-300">Reference: <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{transaction.reference_number}</span></p>
+              <p className="text-slate-700 dark:text-slate-300">Channel: {transaction.payment_method}</p>
+              <p className="text-slate-700 dark:text-slate-300">Amount: Mkw {paid.toLocaleString()}</p>
               {short && (
-                <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-xs">
+                <p className="text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded p-2 text-xs">
                   ⚠️ Short payment: {paid.toLocaleString()} of {due.toLocaleString()}
                 </p>
               )}
@@ -127,18 +127,18 @@ export default function VerifyRepaymentModal({ loan, onClose, onDone }) {
 
             {!showReject ? (
               <>
-                {error && <p className="text-xs text-red-600">{error}</p>}
+                {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setShowReject(true)} className="flex-1 py-2 rounded-xl border border-red-300 text-red-700 text-sm font-semibold">Reject</button>
+                  <button onClick={() => setShowReject(true)} className="flex-1 py-2 rounded-xl border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 text-sm font-semibold">Reject</button>
                   <button disabled={submitting} onClick={confirm} className="flex-1 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold disabled:opacity-50">{submitting ? "Confirming…" : "Confirm"}</button>
                 </div>
               </>
             ) : (
               <div className="space-y-2">
-                <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection (required)" className="w-full border rounded px-3 py-2 text-sm" />
-                {error && <p className="text-xs text-red-600">{error}</p>}
+                <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason for rejection (required)" className="w-full border dark:border-slate-700 rounded px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
+                {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setShowReject(false)} className="flex-1 py-2 rounded-xl border border-slate-300 text-sm">Back</button>
+                  <button onClick={() => setShowReject(false)} className="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">Back</button>
                   <button disabled={submitting} onClick={reject} className="flex-1 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-50">Send rejection</button>
                 </div>
               </div>

@@ -45,42 +45,42 @@ export default function LoanTimeline({ loanId }) {
     return () => { cancelled = true; };
   }, [loanId]);
 
-  if (loading) return <p className="text-xs text-slate-400">Loading history…</p>;
+  if (loading) return <p className="text-xs text-slate-400 dark:text-slate-500">Loading history…</p>;
   if (items.length === 0)
-    return <p className="text-xs text-slate-400">No history yet — status changes will appear here.</p>;
+    return <p className="text-xs text-slate-400 dark:text-slate-500">No history yet — status changes will appear here.</p>;
 
   return (
-    <ol className="space-y-2 border-l-2 border-slate-200 pl-3 mt-2">
+    <ol className="space-y-2 border-l-2 border-slate-200 dark:border-slate-700 pl-3 mt-2">
       {items.map((item, idx) => {
         if (item.kind === "event") {
           const e = item.data;
           return (
-            <li key={`e-${e.id ?? idx}`} className="text-xs text-slate-600">
-              <p className="font-medium text-slate-700">
+            <li key={`e-${e.id ?? idx}`} className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="font-medium text-slate-700 dark:text-slate-300">
                 {ACTION_LABELS[e.action] ?? e.action}
-                <span className="ml-1 font-normal text-slate-400">
+                <span className="ml-1 font-normal text-slate-400 dark:text-slate-500">
                   {e.actor_role === "admin" ? "· admin" : "· you"}
                 </span>
               </p>
               {e.from_status && e.to_status && e.from_status !== e.to_status && (
-                <p className="text-slate-500">{e.from_status} → {e.to_status}</p>
+                <p className="text-slate-500 dark:text-slate-400">{e.from_status} → {e.to_status}</p>
               )}
-              {e.message && <p className="text-slate-600 mt-0.5">“{e.message}”</p>}
-              <p className="text-slate-400">{new Date(e.created_at).toLocaleString()}</p>
+              {e.message && <p className="text-slate-600 dark:text-slate-400 mt-0.5">“{e.message}”</p>}
+              <p className="text-slate-400 dark:text-slate-500">{new Date(e.created_at).toLocaleString()}</p>
             </li>
           );
         }
         const t = item.data;
         return (
-          <li key={`t-${t.id ?? idx}`} className="text-xs text-slate-600">
-            <p className="font-medium text-slate-700">
+          <li key={`t-${t.id ?? idx}`} className="text-xs text-slate-600 dark:text-slate-400">
+            <p className="font-medium text-slate-700 dark:text-slate-300">
               {t.type === "disbursement" ? "💸 Disbursement submitted" : "💰 Repayment submitted"}
-              <span className="ml-1 font-normal text-slate-400">· {t.status}</span>
+              <span className="ml-1 font-normal text-slate-400 dark:text-slate-500">· {t.status}</span>
             </p>
-            <p className="text-slate-500">Channel: {t.payment_method} · Amount: {t.amount ? `Mkw ${Number(t.amount).toLocaleString()}` : "—"}</p>
-            <p className="text-slate-500">Ref: <span className="font-mono">{t.reference_number}</span></p>
+            <p className="text-slate-500 dark:text-slate-400">Channel: {t.payment_method} · Amount: {t.amount ? `Mkw ${Number(t.amount).toLocaleString()}` : "—"}</p>
+            <p className="text-slate-500 dark:text-slate-400">Ref: <span className="font-mono text-slate-700 dark:text-slate-300">{t.reference_number}</span></p>
             {t.proof_url && <ProofLink path={t.proof_url} />}
-            <p className="text-slate-400">{new Date(t.created_at).toLocaleString()}</p>
+            <p className="text-slate-400 dark:text-slate-500">{new Date(t.created_at).toLocaleString()}</p>
           </li>
         );
       })}

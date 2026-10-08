@@ -103,39 +103,39 @@ export default function LoanTracker({
 
   return (
     <div className="space-y-4 mt-6">
-      <h2 className="text-lg font-bold text-slate-800">Loan Tracker</h2>
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Loan Tracker</h2>
 
       {filteredLoans.length === 0 ? (
-        <p className="text-slate-500">No loans match this filter.</p>
+        <p className="text-slate-500 dark:text-slate-400">No loans match this filter.</p>
       ) : (
         filteredLoans.map((loan) => (
           <div
             key={loan.id ?? `${loan.name}-${loan.amount}`}
-            className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-2"
+            className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-2"
           >
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-slate-800">
+              <p className="font-semibold text-slate-800 dark:text-slate-100">
                 {loan.name ?? loan.borrower_name}
               </p>
               {loan.admin_seen === false && (
-                <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 font-medium">
+                <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-200 font-medium">
                   ● Needs review
                 </span>
               )}
             </div>
 
-            <p className="text-slate-600">Amount: Mkw {loan.amount}</p>
-            <p className="text-slate-600">
+            <p className="text-slate-600 dark:text-slate-300">Amount: Mkw {loan.amount}</p>
+            <p className="text-slate-600 dark:text-slate-300">
               Duration: {DURATION_LABELS[loan.duration] || loan.duration}
             </p>
-            <p className="text-slate-600">Interest: Mkw {loan.interest_amount}</p>
-            <p className="text-slate-600">
+            <p className="text-slate-600 dark:text-slate-300">Interest: Mkw {loan.interest_amount}</p>
+            <p className="text-slate-600 dark:text-slate-300">
               Total repayment: Mkw {loan.total_repayment}
             </p>
-            <p className="text-slate-600">Due: {loan.repayment_date}</p>
+            <p className="text-slate-600 dark:text-slate-300">Due: {loan.repayment_date}</p>
             <RepaymentCountdown loan={loan} compact />
             {(loan.status === "repaid" || loan.status === "forfeited") && (
-              <p className="text-xs font-medium text-slate-600">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
                 {loan.status === "repaid"
                   ? `Settled in cash${loan.settled_at ? ` · ${new Date(loan.settled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}`
                   : `Settled via collateral forfeit${loan.settled_at ? ` · ${new Date(loan.settled_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}${
@@ -147,37 +147,37 @@ export default function LoanTracker({
             )}
 
             {loan.payout_method && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
-                <p className="font-medium text-slate-700">
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm">
+                <p className="font-medium text-slate-700 dark:text-slate-300">
                   {loan.payout_method === "bank" ? "🏦 Bank payout" : "📱 Mobile money payout"}
                 </p>
-                <p className="text-slate-600">{payoutSummary(loan)}</p>
+                <p className="text-slate-600 dark:text-slate-400">{payoutSummary(loan)}</p>
               </div>
             )}
 
             {loan.borrower_message && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5 text-sm">
-                <p className="font-medium text-orange-800">Borrower note:</p>
-                <p className="text-orange-900">“{loan.borrower_message}”</p>
+              <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-lg p-2.5 text-sm">
+                <p className="font-medium text-orange-800 dark:text-orange-200">Borrower note:</p>
+                <p className="text-orange-900 dark:text-orange-100">“{loan.borrower_message}”</p>
               </div>
             )}
 
             {(loan.collateral_type || loan.collateral_value) && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
-                <p className="font-medium text-slate-700">Collateral</p>
+              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm">
+                <p className="font-medium text-slate-700 dark:text-slate-300">Collateral</p>
                 <CollateralSummary loan={loan} />
               </div>
             )}
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-slate-600">Status:</span>
+              <span className="text-slate-600 dark:text-slate-300">Status:</span>
               {editable && onUpdateLoan ? (
                 <select
                   value={loan.status}
                   onChange={(e) =>
                     onUpdateLoan(loan.id, { ...loan, status: e.target.value })
                   }
-                  className="border border-slate-200 rounded px-2 py-1 text-sm"
+                  className="border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
                 >
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
@@ -194,7 +194,7 @@ export default function LoanTracker({
               ) : (
                 <span
                   className={`px-2 py-1 text-xs rounded-full font-medium ${
-                    STATUS_STYLES[loan.status] ?? "bg-slate-100 text-slate-600"
+                    STATUS_STYLES[loan.status] ?? "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                   }`}
                 >
                   {STATUS_LABELS[loan.status] ?? loan.status}
@@ -213,12 +213,12 @@ export default function LoanTracker({
                     </button>
                   )}
                   {loan.status === "disbursement_pending" && (
-                    <span className="px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-700">
+                    <span className="px-3 py-1 rounded-full text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200">
                       Waiting for borrower receipt
                     </span>
                   )}
                   {loan.status === "active" && (
-                    <span className="px-3 py-1 rounded-full text-xs bg-indigo-100 text-indigo-700">
+                    <span className="px-3 py-1 rounded-full text-xs bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200">
                       Active — waiting for repayment
                     </span>
                   )}
@@ -233,7 +233,7 @@ export default function LoanTracker({
                     </button>
                   )}
                   {loan.status === "forfeited" && (
-                    <span className="px-3 py-1 rounded-full text-xs bg-slate-800 text-white">
+                    <span className="px-3 py-1 rounded-full text-xs bg-slate-800 dark:bg-slate-700 text-white">
                       Settled via collateral
                     </span>
                   )}
@@ -243,7 +243,7 @@ export default function LoanTracker({
                     </button>
                   )}
                   {loan.admin_seen === false && (
-                    <button onClick={() => onAdminAction("acknowledge", loan)} className="px-3 py-1 rounded-full text-xs bg-white border border-slate-300 text-slate-700">
+                    <button onClick={() => onAdminAction("acknowledge", loan)} className="px-3 py-1 rounded-full text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                       Mark reviewed
                     </button>
                   )}
@@ -251,7 +251,7 @@ export default function LoanTracker({
               )}
             </div>
 
-            <div className="w-full bg-slate-200 rounded-full h-2">
+            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
               <div
                 className="bg-indigo-600 h-2 rounded-full transition-all"
                 style={{ width: STATUS_PROGRESS[loan.status] ?? "25%" }}
@@ -261,7 +261,7 @@ export default function LoanTracker({
             {onViewDetail && (
               <button
                 onClick={() => onViewDetail(loan.id)}
-                className="w-full md:w-auto px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+                className="w-full md:w-auto px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium hover:bg-slate-800 dark:hover:bg-slate-600"
               >
                 View full application + ID
               </button>
@@ -269,7 +269,7 @@ export default function LoanTracker({
 
             {showTimeline && loan.id && (
               <details className="text-sm">
-                <summary className="cursor-pointer text-indigo-600 text-xs font-medium">View history</summary>
+                <summary className="cursor-pointer text-indigo-600 dark:text-indigo-400 text-xs font-medium">View history</summary>
                 <LoanTimeline loanId={loan.id} />
               </details>
             )}

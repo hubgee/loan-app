@@ -13,16 +13,16 @@ export default function Landing() {
         : { to: "/pending", label: "Check status" };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="max-w-6xl mx-auto px-4 py-10 md:py-16 grid md:grid-cols-2 gap-8 items-center">
         <div className="space-y-5">
-          <span className="inline-block px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold">
+          <span className="inline-block px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-200 text-xs font-semibold">
             KUWALA LOANS • Fast personal loans
           </span>
-          <h1 className="text-3xl md:text-5xl font-bold text-slate-800 leading-tight">
+          <h1 className="text-3xl md:text-5xl font-bold text-slate-800 dark:text-slate-100 leading-tight">
             Borrow simply. Track clearly.
           </h1>
-          <ul className="space-y-2 text-slate-600">
+          <ul className="space-y-2 text-slate-600 dark:text-slate-300">
             <li>✅ 1 week, 2 weeks or 1 month terms</li>
             <li>✅ Transparent interest up front</li>
             <li>✅ Track Pending → Approved → Repaid</li>
@@ -37,13 +37,13 @@ export default function Landing() {
             {!user && (
               <Link
                 to="/login"
-                className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-center font-semibold hover:bg-slate-100"
+                className="px-6 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-center font-semibold hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 Log in
               </Link>
             )}
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             New here? Sign up, wait for admin activation, then apply.
           </p>
         </div>
@@ -55,9 +55,9 @@ export default function Landing() {
           />
         </div>
       </div>
-      <footer className="border-t border-slate-200 py-6 text-center text-sm text-slate-500">
+      <footer className="border-t border-slate-200 dark:border-slate-700 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
         Kuwala Loans •{" "}
-        <a href="/Terms-Conditions.pdf" className="underline">
+        <a href="/Terms-Conditions.pdf" className="underline text-indigo-600 dark:text-indigo-400">
           Terms &amp; Conditions
         </a>
       </footer>

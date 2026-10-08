@@ -44,9 +44,9 @@ export function getRepaymentCountdown(loan) {
 
 export function countdownToneClasses(tone) {
   return {
-    green: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    amber: "bg-amber-50 border-amber-200 text-amber-800",
-    orange: "bg-orange-50 border-orange-200 text-orange-800",
-    red: "bg-red-50 border-red-200 text-red-800",
-  }[tone] ?? "bg-slate-50 border-slate-200 text-slate-700";
+    green: "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200",
+    amber: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200",
+    orange: "bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700 text-orange-800 dark:text-orange-200",
+    red: "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200",
+  }[tone] ?? "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300";
 }

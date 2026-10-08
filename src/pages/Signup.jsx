@@ -25,12 +25,12 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 flex items-center justify-center">
+      <div className="max-w-md w-full bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
           Create borrower account
         </h1>
-        <p className="text-slate-600 text-sm mb-4">
+        <p className="text-slate-600 dark:text-slate-300 text-sm mb-4">
           Sign up with email + password. An admin will activate your account
           before you can apply.
         </p>
@@ -40,7 +40,7 @@ export default function Signup() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
-            className="w-full border border-slate-200 rounded px-3 py-3"
+            className="w-full border border-slate-200 dark:border-slate-700 rounded px-3 py-3 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             required
           />
           <input
@@ -48,11 +48,11 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password (min 6 chars)"
-            className="w-full border border-slate-200 rounded px-3 py-3"
+            className="w-full border border-slate-200 dark:border-slate-700 rounded px-3 py-3 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             required
             minLength={6}
           />
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
@@ -61,9 +61,9 @@ export default function Signup() {
             {submitting ? "Creating account..." : "Sign up"}
           </button>
         </form>
-        <p className="text-center text-sm text-slate-500 mt-4">
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-4">
           Already have an account?{" "}
-          <Link to="/login" className="text-indigo-600 hover:underline">
+          <Link to="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline">
             Log in
           </Link>
         </p>

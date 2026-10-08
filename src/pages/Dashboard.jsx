@@ -206,16 +206,16 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <p className="text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen bg-gray-100 dark:bg-slate-900 p-6">
+        <p className="text-gray-600 dark:text-slate-400">Loading dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Dashboard</h1>
         <Link
           to="/admin/users"
           className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 w-fit"
@@ -225,7 +225,7 @@ export default function Dashboard() {
       </div>
 
       {stats.needsAttention > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800">
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl p-3 text-sm text-red-800 dark:text-red-200">
           🔔 {stats.needsAttention} loan{stats.needsAttention > 1 ? "s need" : " needs"} review
           {[
             stats.pending > 0 && `${stats.pending} new`,
@@ -243,18 +243,18 @@ export default function Dashboard() {
       )}
 
       {/* Filter / search / sort bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
         <div className="flex flex-col md:flex-row gap-2 md:items-center">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, phone or amount…"
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+            className="flex-1 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full md:w-auto"
+            className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm w-full md:w-auto bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -269,7 +269,7 @@ export default function Dashboard() {
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full border ${
-                statusFilter === s ? "bg-indigo-600 text-white border-indigo-600" : "bg-white border-slate-200 text-slate-700"
+                statusFilter === s ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               }`}
             >
               {s === "all" ? "All" : s.replace("_", " ")}
@@ -281,7 +281,7 @@ export default function Dashboard() {
           <select
             value={payoutFilter}
             onChange={(e) => setPayoutFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-2 py-1.5"
+            className="border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100"
           >
             <option value="all">All payouts</option>
             <option value="mobile_money">Mobile Money</option>
@@ -290,41 +290,41 @@ export default function Dashboard() {
           <button
             onClick={() => setNeedsReviewOnly((v) => !v)}
             className={`px-3 py-1.5 rounded-full border ${
-              needsReviewOnly ? "bg-red-100 border-red-300 text-red-700" : "bg-white border-slate-200 text-slate-700"
+              needsReviewOnly ? "bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-700 dark:text-red-200" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
             }`}
           >
             {needsReviewOnly ? "● Needs review only" : "Needs review only"}
           </button>
-          <p className="ml-auto text-slate-500">
+          <p className="ml-auto text-slate-500 dark:text-slate-400">
             Showing {pageLoans.length} of {filteredLoans.length}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-lg font-bold">{stats.total}</p>
-          <p className="text-gray-600">Total Loans</p>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded shadow text-center border border-slate-200 dark:border-slate-700">
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.total}</p>
+          <p className="text-gray-600 dark:text-slate-400">Total Loans</p>
         </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-lg font-bold">{stats.pending}</p>
-          <p className="text-gray-600">Pending</p>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded shadow text-center border border-slate-200 dark:border-slate-700">
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.pending}</p>
+          <p className="text-gray-600 dark:text-slate-400">Pending</p>
         </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-lg font-bold">{stats.approved}</p>
-          <p className="text-gray-600">Approved</p>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded shadow text-center border border-slate-200 dark:border-slate-700">
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.approved}</p>
+          <p className="text-gray-600 dark:text-slate-400">Approved</p>
         </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-lg font-bold">{stats.confirmed}</p>
-          <p className="text-gray-600">Confirmed</p>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded shadow text-center border border-slate-200 dark:border-slate-700">
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.confirmed}</p>
+          <p className="text-gray-600 dark:text-slate-400">Confirmed</p>
         </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-lg font-bold">{stats.edit_requested}</p>
-          <p className="text-gray-600">Edit requests</p>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded shadow text-center border border-slate-200 dark:border-slate-700">
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.edit_requested}</p>
+          <p className="text-gray-600 dark:text-slate-400">Edit requests</p>
         </div>
-        <div className="bg-white p-4 rounded shadow text-center">
-          <p className="text-lg font-bold">{stats.repaid}</p>
-          <p className="text-gray-600">Repaid</p>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded shadow text-center border border-slate-200 dark:border-slate-700">
+          <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.repaid}</p>
+          <p className="text-gray-600 dark:text-slate-400">Repaid</p>
         </div>
       </div>
 
@@ -344,23 +344,23 @@ export default function Dashboard() {
         <button
           disabled={page === 1}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
-          className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium disabled:opacity-40"
+          className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium disabled:opacity-40 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
         >
           ← Prev
         </button>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Page {page} of {totalPages}
         </p>
         <button
           disabled={page >= totalPages}
           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-medium disabled:opacity-40"
+          className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium disabled:opacity-40 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
         >
           Next →
         </button>
       </div>
 
-      {acting && <p className="text-xs text-slate-500">Updating…</p>}
+      {acting && <p className="text-xs text-slate-500 dark:text-slate-400">Updating…</p>}
 
       {disburseLoan && (
         <DisburseModal loan={disburseLoan} onClose={() => setDisburseLoan(null)} onDone={load} />
