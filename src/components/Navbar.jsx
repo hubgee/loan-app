@@ -65,17 +65,6 @@ export default function Navbar() {
         KUWALA-LOANS
       </Link>
 
-      <div className="flex items-center gap-2">
-        {showToggle && <DarkModeToggle />}
-        <button
-          onClick={() => setOpen(!open)}
-          className="md:hidden text-2xl focus:outline-none"
-          aria-label="Menu"
-        >
-          ☰
-        </button>
-      </div>
-
       <ul
         className={`absolute md:ml-auto md:static md:bg-transparent left-0 w-full md:w-auto bg-indigo-600 md:flex md:space-x-4 md:items-center transition-all duration-300 ${
           open ? "top-14" : "top-[-400px]"
@@ -193,6 +182,17 @@ export default function Navbar() {
           </li>
         )}
       </ul>
+
+      <div className="flex items-center gap-1 md:ml-2">
+        {showToggle && <DarkModeToggle />}
+        <button
+          onClick={() => setOpen(!open)}
+          className="md:hidden text-2xl focus:outline-none px-1"
+          aria-label="Menu"
+        >
+          ☰
+        </button>
+      </div>
     </nav>
   );
 }
