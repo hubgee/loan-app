@@ -60,27 +60,24 @@ export default function Navbar() {
   const close = () => setOpen(false);
 
   return (
-    <nav className="bg-indigo-600 text-white p-4 flex items-center gap-4 sticky top-0 z-50">
+    <nav className="bg-indigo-600 text-white p-4 flex justify-between items-center sticky top-0 z-50">
       <Link to="/" className="text-lg font-bold" onClick={close}>
         KUWALA-LOANS
       </Link>
 
-      {showToggle && (
-        <span className="flex items-center">
-          <DarkModeToggle />
-        </span>
-      )}
-
-      <button
-        onClick={() => setOpen(!open)}
-        className="md:hidden text-2xl focus:outline-none"
-        aria-label="Menu"
-      >
-        ☰
-      </button>
+      <div className="flex items-center gap-2">
+        {showToggle && <DarkModeToggle />}
+        <button
+          onClick={() => setOpen(!open)}
+          className="md:hidden text-2xl focus:outline-none"
+          aria-label="Menu"
+        >
+          ☰
+        </button>
+      </div>
 
       <ul
-        className={`absolute md:static md:ml-auto md:bg-transparent left-0 w-full md:w-auto bg-indigo-600 md:flex md:space-x-4 md:items-center transition-all duration-300 ${
+        className={`absolute md:ml-auto md:static md:bg-transparent left-0 w-full md:w-auto bg-indigo-600 md:flex md:space-x-4 md:items-center transition-all duration-300 ${
           open ? "top-14" : "top-[-400px]"
         }`}
       >
