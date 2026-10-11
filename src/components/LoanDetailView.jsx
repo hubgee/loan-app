@@ -127,6 +127,8 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
                 <p className="text-sm text-slate-700 dark:text-slate-300">Name: <span className="font-medium text-slate-900 dark:text-slate-100">{loan.name}</span></p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">Email: {loan.email || "—"}</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">Phone: {loan.phone || "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Gender: {loan.gender ? loan.gender.charAt(0).toUpperCase() + loan.gender.slice(1) : "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Age: {loan.age ?? "—"}</p>
               </section>
               <section>
                 <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Loan</h4>

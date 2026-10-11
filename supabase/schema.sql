@@ -67,6 +67,8 @@ create table public.loan_applications (
   borrower_name        text not null,
   email                text,
   phone                text,
+  gender               text check (gender in ('male','female')),
+  age                  int check (age >= 18),
   amount               numeric(12,2) not null,
   duration             text not null default '1_week',
   interest_rate        numeric(5,4) not null default 0.15,

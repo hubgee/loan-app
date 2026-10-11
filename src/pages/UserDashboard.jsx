@@ -21,6 +21,8 @@ function mapRow(l) {
     borrower_name: l.borrower_name,
     email: l.email,
     phone: l.phone,
+    gender: l.gender,
+    age: l.age,
     amount: l.amount,
     duration: l.duration,
     interest_amount: l.interest_amount,

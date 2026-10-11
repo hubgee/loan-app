@@ -47,12 +47,12 @@ const STEPS = [
   {
     id: "borrower",
     title: "Borrower Details",
-    description: "Tell us who you are and how much you need.",
+    description: "Tell us who you are.",
   },
   {
-    id: "payout",
-    title: "Receiving Account Details",
-    description: "Choose where we should send the money.",
+    id: "funds",
+    title: "Funds Details",
+    description: "How much you need and where we should send it.",
   },
   {
     id: "collateral",
@@ -76,6 +76,8 @@ export default function LoanForm({ onAddLoan }) {
     name: "",
     email: "",
     phone: "",
+    gender: "",
+    age: "",
     amount: "",
     duration: "1_week",
     nationalId: null,
@@ -261,12 +263,17 @@ export default function LoanForm({ onAddLoan }) {
   const validateStep = (step) => {
     if (step === 0) {
       if (!formData.name?.trim()) return "Please enter your full name.";
-      if (!formData.amount || Number(formData.amount) <= 0)
-        return "Please enter a valid loan amount.";
-      if (!formData.duration) return "Please choose a loan duration.";
+      if (!formData.gender || !["male", "female"].includes(formData.gender))
+        return "Please select your gender.";
+      const age = Number(formData.age);
+      if (!formData.age || !Number.isFinite(age)) return "Please enter your age.";
+      if (age < 18) return "You must be at least 18 years old to apply.";
       return null;
     }
     if (step === 1) {
+      if (!formData.amount || Number(formData.amount) <= 0)
+        return "Please enter a valid loan amount.";
+      if (!formData.duration) return "Please choose a loan duration.";
       return validatePayout(getEffectivePayout());
     }
     if (step === 2) {
@@ -348,8 +355,14 @@ export default function LoanForm({ onAddLoan }) {
         return;
       }
     }
-    if (!formData.name || !formData.amount || !formData.duration || !formData.nationalId) {
+    if (!formData.name || !formData.nationalId) {
       alert("Please fill in all required fields and upload your ID.");
+      return;
+    }
+    if (!formData.amount || !formData.duration) {
+      setActiveStep(1);
+      setMessage("Please enter the loan amount and duration.");
+      scrollToTop();
       return;
     }
     if (!formData.collateralType || !formData.collateralDescription.trim() || !formData.collateralValue) {
@@ -424,6 +437,8 @@ export default function LoanForm({ onAddLoan }) {
           borrower_name: formData.name,
           email: formData.email || null,
           phone: formData.phone || null,
+          gender: formData.gender || null,
+          age: formData.age ? Number(formData.age) : null,
           amount: principal,
           duration: formData.duration,
           interest_rate: DURATION_RATES[formData.duration],
@@ -471,6 +486,8 @@ export default function LoanForm({ onAddLoan }) {
         name: "",
         email: "",
         phone: "",
+        gender: "",
+        age: "",
         amount: "",
         duration: "1_week",
         nationalId: null,
@@ -602,33 +619,63 @@ export default function LoanForm({ onAddLoan }) {
       {/* ---- Step 1: Borrower Details ---- */}
       {activeStep === 0 && (
         <div className="space-y-3">
-          <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className={inputCls} required />
+          <div>
+            <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className={inputCls} required />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Use the exact name registered on your National ID.
+            </p>
+          </div>
           <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" className={inputCls} />
           <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" className={inputCls} />
-          <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="Loan Amount" className={inputCls} required />
-
-          <select name="duration" value={formData.duration} onChange={handleChange} className={inputCls} required>
-            <option value="1_week">1 Week (15% interest)</option>
-            <option value="2_weeks">2 Weeks (30% interest)</option>
-            <option value="1_month">1 Month (60% interest)</option>
-          </select>
-
-          {formData.amount && (
-            <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded p-3 text-sm text-yellow-800 dark:text-yellow-200">
-              <p>Interest: {formatMwk(interest)}</p>
-              <p>Total to repay: {formatMwk(totalRepayment)}</p>
-              <p>Repayment date: {repaymentDate}</p>
+          <div>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Gender <span className="text-red-500">*</span>
+            </p>
+            <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Gender">
+              {[{ id: "male", label: "Male" }, { id: "female", label: "Female" }].map((g) => (
+                <button key={g.id} type="button" role="radio" aria-checked={formData.gender === g.id}
+                  onClick={() => setFormData((prev) => ({ ...prev, gender: g.id }))}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.gender === g.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+                  {g.label}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+          <div>
+            <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="Age (must be 18+)" min="18" className={inputCls} required />
+          </div>
         </div>
       )}
 
-      {/* ---- Step 2: Receiving Account Details ---- */}
+      {/* ---- Step 2: Funds Details ---- */}
       {activeStep === 1 && (
-        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
-          <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-            Where should we send the money? <span className="text-red-500">*</span>
-          </h3>
+        <div className="space-y-4">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+              Amount Details <span className="text-red-500">*</span>
+            </h3>
+            <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="Loan Amount" className={inputCls} required />
+
+            <select name="duration" value={formData.duration} onChange={handleChange} className={inputCls} required>
+              <option value="1_week">1 Week (15% interest)</option>
+              <option value="2_weeks">2 Weeks (30% interest)</option>
+              <option value="1_month">1 Month (60% interest)</option>
+            </select>
+
+            {formData.amount && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded p-3 text-sm text-yellow-800 dark:text-yellow-200">
+                <p>Interest: {formatMwk(interest)}</p>
+                <p>Total to repay: {formatMwk(totalRepayment)}</p>
+                <p>Repayment date: {repaymentDate}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+              Account Receiving Details <span className="text-red-500">*</span>
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Where should we send the money?</p>
           {loadingLast ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Checking last payment details…</p>
           ) : lastPayout ? (
@@ -682,6 +729,7 @@ export default function LoanForm({ onAddLoan }) {
               )}
             </>
           )}
+          </div>
         </div>
       )}
 
