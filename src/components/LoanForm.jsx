@@ -78,6 +78,15 @@ export default function LoanForm({ onAddLoan }) {
     phone: "",
     gender: "",
     age: "",
+    residenceDistrict: "",
+    residenceArea: "",
+    residenceEvidence: null,
+    kinName: "",
+    kinRelationship: "",
+    kinPhone: "",
+    kinNationalId: null,
+    kinDistrict: "",
+    kinArea: "",
     amount: "",
     duration: "1_week",
     nationalId: null,
@@ -138,8 +147,8 @@ export default function LoanForm({ onAddLoan }) {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (name === "nationalId") {
-      setFormData({ ...formData, nationalId: files?.[0] ?? null });
+    if (name === "nationalId" || name === "residenceEvidence" || name === "kinNationalId") {
+      setFormData({ ...formData, [name]: files?.[0] ?? null });
     } else if (name === "collateralFiles") {
       const picked = Array.from(files ?? []).slice(
         0,
@@ -268,6 +277,17 @@ export default function LoanForm({ onAddLoan }) {
       const age = Number(formData.age);
       if (!formData.age || !Number.isFinite(age)) return "Please enter your age.";
       if (age < 18) return "You must be at least 18 years old to apply.";
+      if (!formData.residenceDistrict?.trim()) return "Please enter your current district of residence.";
+      if (!formData.residenceArea?.trim()) return "Please enter your area / village of residence.";
+      if (!formData.residenceEvidence) return "Please upload your residential evidence (waterboard or ESCOM receipt).";
+      if (!formData.kinName?.trim()) return "Please enter your next of kin's name.";
+      if (!formData.kinRelationship?.trim()) return "Please enter your relationship to your next of kin.";
+      if (!formData.kinPhone?.trim()) return "Please enter your next of kin's phone number.";
+      if (formData.kinPhone.replace(/\D/g, "").length < 9)
+        return "Please enter a valid phone number for your next of kin.";
+      if (!formData.kinNationalId) return "Please upload your next of kin's National ID.";
+      if (!formData.kinDistrict?.trim()) return "Please enter your next of kin's district.";
+      if (!formData.kinArea?.trim()) return "Please enter your next of kin's area / village.";
       return null;
     }
     if (step === 1) {
@@ -423,12 +443,18 @@ export default function LoanForm({ onAddLoan }) {
     setMessage("");
     const uploadedPaths = [];
     try {
+      const uploadToIds = async (file, prefix) => {
+        const p = `${user.id}/${prefix}_${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("ids")
+          .upload(p, file, { upsert: false });
+        if (uploadError) throw uploadError;
+        return p;
+      };
       const file = formData.nationalId;
-      const path = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("ids")
-        .upload(path, file, { upsert: false });
-      if (uploadError) throw uploadError;
+      const path = await uploadToIds(file, "national");
+      const residencePath = await uploadToIds(formData.residenceEvidence, "residence");
+      const kinIdPath = await uploadToIds(formData.kinNationalId, "kin");
 
       const { data, error } = await supabase
         .from("loan_applications")
@@ -439,6 +465,17 @@ export default function LoanForm({ onAddLoan }) {
           phone: formData.phone || null,
           gender: formData.gender || null,
           age: formData.age ? Number(formData.age) : null,
+          residence_district: formData.residenceDistrict.trim() || null,
+          residence_area: formData.residenceArea.trim() || null,
+          residence_evidence_path: residencePath,
+          residence_evidence_original: formData.residenceEvidence.name,
+          kin_name: formData.kinName.trim() || null,
+          kin_relationship: formData.kinRelationship.trim() || null,
+          kin_phone: formData.kinPhone.trim() || null,
+          kin_national_id_path: kinIdPath,
+          kin_national_id_original: formData.kinNationalId.name,
+          kin_district: formData.kinDistrict.trim() || null,
+          kin_area: formData.kinArea.trim() || null,
           amount: principal,
           duration: formData.duration,
           interest_rate: DURATION_RATES[formData.duration],
@@ -488,6 +525,15 @@ export default function LoanForm({ onAddLoan }) {
         phone: "",
         gender: "",
         age: "",
+        residenceDistrict: "",
+        residenceArea: "",
+        residenceEvidence: null,
+        kinName: "",
+        kinRelationship: "",
+        kinPhone: "",
+        kinNationalId: null,
+        kinDistrict: "",
+        kinArea: "",
         amount: "",
         duration: "1_week",
         nationalId: null,
@@ -618,31 +664,114 @@ export default function LoanForm({ onAddLoan }) {
 
       {/* ---- Step 1: Borrower Details ---- */}
       {activeStep === 0 && (
-        <div className="space-y-3">
-          <div>
-            <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className={inputCls} required />
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Use the exact name registered on your National ID.
-            </p>
-          </div>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" className={inputCls} />
-          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" className={inputCls} />
-          <div>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Gender <span className="text-red-500">*</span>
-            </p>
-            <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Gender">
-              {[{ id: "male", label: "Male" }, { id: "female", label: "Female" }].map((g) => (
-                <button key={g.id} type="button" role="radio" aria-checked={formData.gender === g.id}
-                  onClick={() => setFormData((prev) => ({ ...prev, gender: g.id }))}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.gender === g.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
-                  {g.label}
-                </button>
-              ))}
+        <div className="space-y-4">
+          {/* Personal info */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+              Personal Information <span className="text-red-500">*</span>
+            </h3>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Full Name <span className="text-red-500">*</span></label>
+              <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="e.g. Chimwemwe Banda" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Use the exact name registered on your National ID — it must match the ID you upload in the last step.
+              </p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="e.g. you@example.com" className={inputCls} />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Optional — used for loan updates and receipts.</p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g. 0888 123 456" className={inputCls} />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your own reachable mobile number.</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Gender <span className="text-red-500">*</span>
+              </p>
+              <div className="flex gap-2 flex-wrap" role="radiogroup" aria-label="Gender">
+                {[{ id: "male", label: "Male" }, { id: "female", label: "Female" }].map((g) => (
+                  <button key={g.id} type="button" role="radio" aria-checked={formData.gender === g.id}
+                    onClick={() => setFormData((prev) => ({ ...prev, gender: g.id }))}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.gender === g.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Age <span className="text-red-500">*</span></label>
+              <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="e.g. 25" min="18" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">You must be 18 years or older to apply.</p>
             </div>
           </div>
-          <div>
-            <input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="Age (must be 18+)" min="18" className={inputCls} required />
+
+          {/* Current residence */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+              Current Residence Details <span className="text-red-500">*</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Where you currently live. This helps us verify your address.</p>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">District <span className="text-red-500">*</span></label>
+              <input type="text" name="residenceDistrict" value={formData.residenceDistrict} onChange={handleChange} placeholder="e.g. Lilongwe" className={inputCls} required />
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Area / Village <span className="text-red-500">*</span></label>
+              <input type="text" name="residenceArea" value={formData.residenceArea} onChange={handleChange} placeholder="e.g. Area 25, Village Mcheza" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Write the area, township, or village name where you stay.</p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Physical residential evidence (PDF/JPG/PNG) <span className="text-red-500">*</span></label>
+              <input type="file" name="residenceEvidence" accept=".pdf,.jpg,.jpeg,.png" onChange={handleChange} className="w-full text-slate-700 dark:text-slate-300 text-sm" required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload a recent waterboard or ESCOM receipt showing your name or address. A clear photo or scan is fine.</p>
+              {formData.residenceEvidence && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">Selected: {formData.residenceEvidence.name}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Next of kin */}
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+              Next of Kin Details <span className="text-red-500">*</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">A trusted person we can contact if we cannot reach you.</p>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Full Name <span className="text-red-500">*</span></label>
+              <input type="text" name="kinName" value={formData.kinName} onChange={handleChange} placeholder="e.g. Blessings Banda" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Use the name on their National ID.</p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Relationship <span className="text-red-500">*</span></label>
+              <input type="text" name="kinRelationship" value={formData.kinRelationship} onChange={handleChange} placeholder="e.g. Spouse, Brother, Mother, Friend" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">How is this person related to you?</p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Phone Number <span className="text-red-500">*</span></label>
+              <input type="tel" name="kinPhone" value={formData.kinPhone} onChange={handleChange} placeholder="e.g. 0999 123 456" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Their own reachable mobile number.</p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">National ID (PDF/JPG/PNG) <span className="text-red-500">*</span></label>
+              <input type="file" name="kinNationalId" accept=".pdf,.jpg,.jpeg,.png" onChange={handleChange} className="w-full text-slate-700 dark:text-slate-300 text-sm" required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload a clear photo or scan of your next of kin&apos;s National ID.</p>
+              {formData.kinNationalId && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">Selected: {formData.kinNationalId.name}</p>
+              )}
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">District <span className="text-red-500">*</span></label>
+              <input type="text" name="kinDistrict" value={formData.kinDistrict} onChange={handleChange} placeholder="e.g. Blantyre" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">The district where your next of kin lives.</p>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Area / Village <span className="text-red-500">*</span></label>
+              <input type="text" name="kinArea" value={formData.kinArea} onChange={handleChange} placeholder="e.g. Ndirande, Village Makata" className={inputCls} required />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Their area, township, or village name.</p>
+            </div>
           </div>
         </div>
       )}

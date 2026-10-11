@@ -49,36 +49,53 @@ function formatDate(s) {
 
 export default function LoanDetailView({ loan, index, total, onClose, onPrev, onNext, onAdminAction, acting }) {
   const [tab, setTab] = useState("overview");
-  const [idUrl, setIdUrl] = useState(null);
-  const [idLoading, setIdLoading] = useState(false);
-  const [idError, setIdError] = useState("");
+  const [docTab, setDocTab] = useState("national");
+  const [docUrls, setDocUrls] = useState({ national: null, residence: null, kin: null });
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState("");
   const [isPdf, setIsPdf] = useState(false);
 
-  useEffect(() => { setTab("overview"); }, [loan?.id]);
+  useEffect(() => { setTab("overview"); setDocTab("national"); }, [loan?.id]);
+
+  const docPaths = {
+    national: { path: loan?.national_id_path, original: loan?.national_id_original },
+    residence: { path: loan?.residence_evidence_path, original: loan?.residence_evidence_original },
+    kin: { path: loan?.kin_national_id_path, original: loan?.kin_national_id_original },
+  };
 
   useEffect(() => {
-    if (!loan?.national_id_path) {
-      setIdUrl(null);
+    const current = docPaths[docTab];
+    if (!current?.path) {
+      setDocUrls((prev) => ({ ...prev, [docTab]: null }));
+      setIsPdf(false);
       return;
     }
-    setIdLoading(true);
-    setIdError("");
+    if (docUrls[docTab]) {
+      setIsPdf(
+        current.original?.toLowerCase().endsWith(".pdf") ||
+          current.path.toLowerCase().endsWith(".pdf")
+      );
+      return;
+    }
+    setDocLoading(true);
+    setDocError("");
     const load = async () => {
-      const { data, error } = await supabase.storage.from("ids").createSignedUrl(loan.national_id_path, 3600);
+      const { data, error } = await supabase.storage.from("ids").createSignedUrl(current.path, 3600);
       if (error) {
-        setIdError("Could not load ID document.");
-        setIdUrl(null);
+        setDocError("Could not load document.");
+        setDocUrls((prev) => ({ ...prev, [docTab]: null }));
       } else {
-        setIdUrl(data.signedUrl);
+        setDocUrls((prev) => ({ ...prev, [docTab]: data.signedUrl }));
         setIsPdf(
-          loan.national_id_original?.toLowerCase().endsWith(".pdf") ||
-            loan.national_id_path.toLowerCase().endsWith(".pdf")
+          current.original?.toLowerCase().endsWith(".pdf") ||
+            current.path.toLowerCase().endsWith(".pdf")
         );
       }
-      setIdLoading(false);
+      setDocLoading(false);
     };
     load();
-  }, [loan?.national_id_path, loan?.national_id_original]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loan?.id, docTab, loan?.national_id_path, loan?.residence_evidence_path, loan?.kin_national_id_path]);
 
   if (!loan) return null;
 
@@ -111,7 +128,7 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
         </div>
 
         <div className="flex gap-2 overflow-x-auto text-sm">
-          {[["overview", "Overview"], ["collateral", "Collateral"], ["documents", "National ID"], ["history", "History"]].map(([id, label]) => (
+          {[["overview", "Overview"], ["collateral", "Collateral"], ["documents", "Documents"], ["history", "History"]].map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`px-4 py-2 rounded-full border whitespace-nowrap ${tab === id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
               {label}
@@ -129,6 +146,20 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
                 <p className="text-sm text-slate-700 dark:text-slate-300">Phone: {loan.phone || "—"}</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">Gender: {loan.gender ? loan.gender.charAt(0).toUpperCase() + loan.gender.slice(1) : "—"}</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">Age: {loan.age ?? "—"}</p>
+              </section>
+              <section>
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Current Residence</h4>
+                <p className="text-sm text-slate-700 dark:text-slate-300">District: {loan.residence_district || "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Area / Village: {loan.residence_area || "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Evidence: {loan.residence_evidence_original || (loan.residence_evidence_path ? "Uploaded" : "—")}</p>
+              </section>
+              <section>
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Next of Kin</h4>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Name: <span className="font-medium text-slate-900 dark:text-slate-100">{loan.kin_name || "—"}</span></p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Relationship: {loan.kin_relationship || "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Phone: {loan.kin_phone || "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">District: {loan.kin_district || "—"}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">Area / Village: {loan.kin_area || "—"}</p>
               </section>
               <section>
                 <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Loan</h4>
@@ -221,16 +252,24 @@ export default function LoanDetailView({ loan, index, total, onClose, onPrev, on
         )}
 
         {tab === "documents" && (
-          <section className="space-y-2">
-            {idLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Loading document…</p>}
-            {idError && <p className="text-sm text-red-600 dark:text-red-400">{idError}</p>}
-            {idUrl && (
+          <section className="space-y-3">
+            <div className="flex gap-2 flex-wrap text-sm">
+              {[["national", "Borrower National ID"], ["residence", "Residence Evidence"], ["kin", "Kin National ID"]].map(([id, label]) => (
+                <button key={id} onClick={() => setDocTab(id)}
+                  className={`px-4 py-2 rounded-full border whitespace-nowrap ${docTab === id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {docLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Loading document…</p>}
+            {docError && <p className="text-sm text-red-600 dark:text-red-400">{docError}</p>}
+            {docUrls[docTab] && (
               <div className="border dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900">
-                {isPdf ? <iframe src={idUrl} title="National ID" className="w-full h-80 md:h-[28rem]" /> : <img src={idUrl} alt="National ID" className="w-full object-contain max-h-[28rem]" />}
+                {isPdf ? <iframe src={docUrls[docTab]} title="Document" className="w-full h-80 md:h-[28rem]" /> : <img src={docUrls[docTab]} alt="Document" className="w-full object-contain max-h-[28rem]" />}
               </div>
             )}
-            {idUrl && <a href={idUrl} target="_blank" rel="noreferrer" className="text-sm text-indigo-600 dark:text-indigo-400 underline">Open in new tab</a>}
-            {!loan.national_id_path && <p className="text-sm text-slate-500 dark:text-slate-400">No ID document uploaded.</p>}
+            {docUrls[docTab] && <a href={docUrls[docTab]} target="_blank" rel="noreferrer" className="text-sm text-indigo-600 dark:text-indigo-400 underline">Open in new tab</a>}
+            {!docPaths[docTab]?.path && <p className="text-sm text-slate-500 dark:text-slate-400">No document uploaded.</p>}
           </section>
         )}
 
