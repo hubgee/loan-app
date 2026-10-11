@@ -1,5 +1,5 @@
 // src/components/LoanForm.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../api/supabaseClient";
 import { useAuth } from "../auth/useAuth";
@@ -43,6 +43,24 @@ export const PAYOUT_PROVIDER_LABELS = {
   standard_bank: "Standard Bank",
 };
 
+const STEPS = [
+  {
+    id: "borrower",
+    title: "Borrower Details",
+    description: "Tell us who you are and how much you need.",
+  },
+  {
+    id: "payout",
+    title: "Receiving Account Details",
+    description: "Choose where we should send the money.",
+  },
+  {
+    id: "collateral",
+    title: "Collateral & ID Details",
+    description: "Secure your loan with collateral and verify your identity.",
+  },
+];
+
 function payoutSummary(p) {
   if (!p?.payout_method) return "";
   const provider = PAYOUT_PROVIDER_LABELS[p.payout_provider] ?? p.payout_provider;
@@ -72,6 +90,9 @@ export default function LoanForm({ onAddLoan }) {
     collateralFiles: [],
     ackShortfall: false,
   });
+
+  const [activeStep, setActiveStep] = useState(0);
+  const topRef = useRef(null);
 
   const [lastPayout, setLastPayout] = useState(null);
   const [useLast, setUseLast] = useState(false);
@@ -216,8 +237,99 @@ export default function LoanForm({ onAddLoan }) {
     return null;
   };
 
+  const getEffectivePayout = () => {
+    if (useLast && lastPayout) {
+      return {
+        payoutMethod: lastPayout.payout_method,
+        payoutProvider: lastPayout.payout_provider,
+        payoutAccountName: lastPayout.payout_account_name,
+        payoutAccountNumber: lastPayout.payout_account_number,
+        payoutBranch: lastPayout.payout_branch ?? "",
+      };
+    }
+    return {
+      payoutMethod: formData.payoutMethod,
+      payoutProvider: formData.payoutProvider,
+      payoutAccountName: formData.payoutAccountName?.trim(),
+      payoutAccountNumber: formData.payoutAccountNumber?.trim(),
+      payoutBranch:
+        formData.payoutMethod === "bank" ? formData.payoutBranch?.trim() : null,
+    };
+  };
+
+  // Per-step validation so "Next" only advances on a valid section.
+  const validateStep = (step) => {
+    if (step === 0) {
+      if (!formData.name?.trim()) return "Please enter your full name.";
+      if (!formData.amount || Number(formData.amount) <= 0)
+        return "Please enter a valid loan amount.";
+      if (!formData.duration) return "Please choose a loan duration.";
+      return null;
+    }
+    if (step === 1) {
+      return validatePayout(getEffectivePayout());
+    }
+    if (step === 2) {
+      if (!formData.collateralType) return "Please choose a collateral type.";
+      if (!formData.collateralDescription.trim())
+        return "Please describe your collateral.";
+      if (!formData.collateralValue || Number(formData.collateralValue) <= 0)
+        return "Please enter the estimated collateral value.";
+      const principal = Number(formData.amount);
+      const colVal = Number(formData.collateralValue);
+      if (!(colVal >= principal)) {
+        return `Collateral must at least cover the amount you receive (Mwk ${principal.toLocaleString()}).`;
+      }
+      if (formData.collateralFiles.length < COLLATERAL_MIN_FILES) {
+        return `Please attach at least ${COLLATERAL_MIN_FILES} collateral photos/documents (max ${COLLATERAL_MAX_FILES}).`;
+      }
+      const shortfall = coverage ? coverage.shortfall : 0;
+      if (shortfall > 0 && coverage?.passesFloor && !formData.ackShortfall) {
+        return "Please tick the shortfall acknowledgement to continue.";
+      }
+      if (!formData.nationalId) return "Please upload your National ID.";
+      return null;
+    }
+    return null;
+  };
+
+  const scrollToTop = () => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleNext = () => {
+    const err = validateStep(activeStep);
+    if (err) {
+      setMessage(err);
+      return;
+    }
+    setMessage("");
+    setActiveStep((s) => Math.min(s + 1, STEPS.length - 1));
+    scrollToTop();
+  };
+
+  const handleBack = () => {
+    setMessage("");
+    setActiveStep((s) => Math.max(s - 1, 0));
+    scrollToTop();
+  };
+
+  const goToStep = (idx) => {
+    // Only allow jumping back to already-visited sections.
+    if (idx < activeStep) {
+      setMessage("");
+      setActiveStep(idx);
+      scrollToTop();
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Guard against Enter-key submits on earlier steps.
+    if (activeStep < STEPS.length - 1) {
+      handleNext();
+      return;
+    }
     if (!user) {
       setMessage("Please log in to submit an application.");
       return;
@@ -225,6 +337,16 @@ export default function LoanForm({ onAddLoan }) {
     if (!isActive && !isAdmin) {
       setMessage("Your account is pending activation by an admin.");
       return;
+    }
+    // Final re-validation across all sections (in case of stale state).
+    for (let s = 0; s < STEPS.length; s += 1) {
+      const err = validateStep(s);
+      if (err) {
+        setActiveStep(s);
+        setMessage(err);
+        scrollToTop();
+        return;
+      }
     }
     if (!formData.name || !formData.amount || !formData.duration || !formData.nationalId) {
       alert("Please fill in all required fields and upload your ID.");
@@ -252,23 +374,7 @@ export default function LoanForm({ onAddLoan }) {
       return;
     }
 
-    const effectivePayout =
-      useLast && lastPayout
-        ? {
-            payoutMethod: lastPayout.payout_method,
-            payoutProvider: lastPayout.payout_provider,
-            payoutAccountName: lastPayout.payout_account_name,
-            payoutAccountNumber: lastPayout.payout_account_number,
-            payoutBranch: lastPayout.payout_branch ?? "",
-          }
-        : {
-            payoutMethod: formData.payoutMethod,
-            payoutProvider: formData.payoutProvider,
-            payoutAccountName: formData.payoutAccountName?.trim(),
-            payoutAccountNumber: formData.payoutAccountNumber?.trim(),
-            payoutBranch:
-              formData.payoutMethod === "bank" ? formData.payoutBranch?.trim() : null,
-          };
+    const effectivePayout = getEffectivePayout();
 
     const payoutError = validatePayout(effectivePayout);
     if (payoutError) {
@@ -387,6 +493,8 @@ export default function LoanForm({ onAddLoan }) {
         payout_branch: effectivePayout.payoutBranch,
       });
       setUseLast(true);
+      setActiveStep(0);
+      scrollToTop();
     } catch (err) {
       setMessage(err.message || "Submission failed. Please try again.");
     } finally {
@@ -425,159 +533,249 @@ export default function LoanForm({ onAddLoan }) {
   const providerOptions =
     formData.payoutMethod === "bank" ? BANK_PROVIDERS : MOBILE_PROVIDERS;
 
+  const inputCls = "w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
+      <div ref={topRef} />
       <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Loan Application</h2>
 
-      <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-      <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
-      <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" />
-      <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="Loan Amount" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+      {/* ---- Stepper ---- */}
+      <div>
+        <ol className="flex items-start gap-1 sm:gap-2">
+          {STEPS.map((step, idx) => {
+            const done = idx < activeStep;
+            const current = idx === activeStep;
+            return (
+              <li key={step.id} className="flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => goToStep(idx)}
+                  disabled={idx > activeStep}
+                  className="w-full flex flex-col items-center gap-1 group"
+                  aria-current={current ? "step" : undefined}
+                >
+                  <span className="w-full flex items-center">
+                    <span
+                      className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold border transition-all ${
+                        done
+                          ? "bg-green-600 border-green-600 text-white"
+                          : current
+                            ? "bg-indigo-600 border-indigo-600 text-white"
+                            : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {done ? "✓" : idx + 1}
+                    </span>
+                  </span>
+                  <span
+                    className={`text-[11px] sm:text-xs text-center leading-tight font-medium ${
+                      current
+                        ? "text-indigo-700 dark:text-indigo-300"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
+                    {step.title}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="mt-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+          <div
+            className="h-full bg-indigo-600 transition-all"
+            style={{ width: `${((activeStep + 1) / STEPS.length) * 100}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+          Step {activeStep + 1} of {STEPS.length}
+        </p>
+      </div>
 
-      <select name="duration" value={formData.duration} onChange={handleChange} className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100" required>
-        <option value="1_week">1 Week (15% interest)</option>
-        <option value="2_weeks">2 Weeks (30% interest)</option>
-        <option value="1_month">1 Month (60% interest)</option>
-      </select>
+      {/* ---- Section title ---- */}
+      <div className="border-b border-slate-200 dark:border-slate-700 pb-3">
+        <h3 className="font-bold text-slate-800 dark:text-slate-100">{STEPS[activeStep].title}</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{STEPS[activeStep].description}</p>
+      </div>
 
-      {formData.amount && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded p-3 text-sm text-yellow-800 dark:text-yellow-200">
-          <p>Interest: {formatMwk(interest)}</p>
-          <p>Total to repay: {formatMwk(totalRepayment)}</p>
-          <p>Repayment date: {repaymentDate}</p>
+      {/* ---- Step 1: Borrower Details ---- */}
+      {activeStep === 0 && (
+        <div className="space-y-3">
+          <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" className={inputCls} required />
+          <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" className={inputCls} />
+          <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" className={inputCls} />
+          <input type="number" name="amount" value={formData.amount} onChange={handleChange} placeholder="Loan Amount" className={inputCls} required />
+
+          <select name="duration" value={formData.duration} onChange={handleChange} className={inputCls} required>
+            <option value="1_week">1 Week (15% interest)</option>
+            <option value="2_weeks">2 Weeks (30% interest)</option>
+            <option value="1_month">1 Month (60% interest)</option>
+          </select>
+
+          {formData.amount && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded p-3 text-sm text-yellow-800 dark:text-yellow-200">
+              <p>Interest: {formatMwk(interest)}</p>
+              <p>Total to repay: {formatMwk(totalRepayment)}</p>
+              <p>Repayment date: {repaymentDate}</p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ---- Preferred payment details ---- */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold text-slate-800 dark:text-slate-100">
-          Where should we send the money? <span className="text-red-500">*</span>
-        </h3>
-        {loadingLast ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Checking last payment details…</p>
-        ) : lastPayout ? (
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Last used: <span className="font-medium text-slate-800 dark:text-slate-100">{payoutSummary(lastPayout)}</span>
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              <button type="button" onClick={() => setUseLast(true)} className={`px-4 py-2 rounded-full text-sm font-medium ${useLast ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
-                Use same details
-              </button>
-              <button type="button" onClick={() => setUseLast(false)} className={`px-4 py-2 rounded-full text-sm font-medium ${!useLast ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
-                Enter different details
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {(!lastPayout || !useLast) && (
-          <>
-            <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Payment method">
-              {[{ id: "mobile_money", label: "📱 Mobile Money" }, { id: "bank", label: "🏦 Bank" }].map((m) => (
-                <button key={m.id} type="button" role="tab" aria-selected={formData.payoutMethod === m.id} onClick={() => setPayoutMethod(m.id)}
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${formData.payoutMethod === m.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
-                  {m.label}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formData.payoutMethod === "bank" ? "Choose your bank" : "Choose provider"}</p>
+      {/* ---- Step 2: Receiving Account Details ---- */}
+      {activeStep === 1 && (
+        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+            Where should we send the money? <span className="text-red-500">*</span>
+          </h3>
+          {loadingLast ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Checking last payment details…</p>
+          ) : lastPayout ? (
+            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Last used: <span className="font-medium text-slate-800 dark:text-slate-100">{payoutSummary(lastPayout)}</span>
+              </p>
               <div className="flex gap-2 flex-wrap">
-                {providerOptions.map((p) => (
-                  <button key={p.id} type="button" onClick={() => setFormData((prev) => ({ ...prev, payoutProvider: p.id }))}
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.payoutProvider === p.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
-                    {p.label}
+                <button type="button" onClick={() => setUseLast(true)} className={`px-4 py-2 rounded-full text-sm font-medium ${useLast ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  Use same details
+                </button>
+                <button type="button" onClick={() => setUseLast(false)} className={`px-4 py-2 rounded-full text-sm font-medium ${!useLast ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  Enter different details
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {(!lastPayout || !useLast) && (
+            <>
+              <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Payment method">
+                {[{ id: "mobile_money", label: "📱 Mobile Money" }, { id: "bank", label: "🏦 Bank" }].map((m) => (
+                  <button key={m.id} type="button" role="tab" aria-selected={formData.payoutMethod === m.id} onClick={() => setPayoutMethod(m.id)}
+                    className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all ${formData.payoutMethod === m.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+                    {m.label}
                   </button>
                 ))}
               </div>
-            </div>
-            {formData.payoutMethod === "mobile_money" ? (
-              <div className="space-y-3">
-                <input type="tel" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Mobile money phone number (e.g. 0888 123 456)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-                <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Registered name on the account" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formData.payoutMethod === "bank" ? "Choose your bank" : "Choose provider"}</p>
+                <div className="flex gap-2 flex-wrap">
+                  {providerOptions.map((p) => (
+                    <button key={p.id} type="button" onClick={() => setFormData((prev) => ({ ...prev, payoutProvider: p.id }))}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${formData.payoutProvider === p.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"}`}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <input type="text" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Bank account number" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-                <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Account name" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-                <input type="text" name="payoutBranch" value={formData.payoutBranch} onChange={handleChange} placeholder="Branch (e.g. Lilongwe)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* ---- Collateral ---- */}
-      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold text-slate-800 dark:text-slate-100">Collateral <span className="text-red-500">*</span></h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Must be worth at least the amount you receive. Photos/documents: {COLLATERAL_MIN_FILES}–{COLLATERAL_MAX_FILES} required.</p>
-        <div className="flex gap-2 flex-wrap">
-          {COLLATERAL_TYPES.map((t) => (
-            <button key={t.id} type="button" onClick={() => setFormData((prev) => ({ ...prev, collateralType: t.id }))}
-              className={`px-3 py-1.5 rounded-full text-sm border ${formData.collateralType === t.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <textarea name="collateralDescription" value={formData.collateralDescription} onChange={handleChange} placeholder="Describe the collateral (e.g. 1 acre in Area 25, plot no…, Honda Fit 2012 reg…)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-        <input type="number" name="collateralValue" value={formData.collateralValue} onChange={handleChange} placeholder="Estimated value (MWK)" className="w-full border dark:border-slate-700 rounded px-3 py-2 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500" required />
-
-        {coverage && Number(formData.amount) > 0 && Number(formData.collateralValue) > 0 && (
-          <div className={`rounded p-3 text-sm border ${!coverage.passesFloor ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200" : coverage.coversTotal ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200" : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200"}`}>
-            {!coverage.passesFloor ? (
-              <p>❌ Below floor: collateral must at least cover Mwk {Number(formData.amount).toLocaleString()} you receive.</p>
-            ) : coverage.coversTotal ? (
-              <p>✅ Covers total {formatMwk(totalRepayment)}. Surplus {formatMwk(coverage.surplus)} returnable after sale if forfeited.</p>
-            ) : (
-              <p>⚠️ Covers principal ({coverage.vsPrincipal.toFixed(2)}x) but short of total by {formatMwk(coverage.shortfall)}. If forfeited you still owe the shortfall.</p>
-            )}
-          </div>
-        )}
-
-        <div>
-          <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Collateral photos/documents ({formData.collateralFiles.length}/{COLLATERAL_MAX_FILES})</label>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
-          <div className="flex gap-2 flex-wrap">
-            {isMobile && formData.collateralFiles.length < COLLATERAL_MAX_FILES && (
-              <label className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium cursor-pointer">
-                📷 Take photo
-                <input type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
-              </label>
-            )}
-            <label className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium cursor-pointer bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-              📁 Choose files
-              <input type="file" name="collateralFiles" accept="image/*,.pdf" multiple onChange={handleChange} className="hidden" />
-            </label>
-          </div>
-          {formData.collateralFiles.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm">
-              {formData.collateralFiles.map((f, i) => (
-                <li key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded px-2 py-1 text-slate-700 dark:text-slate-300">
-                  <span className="truncate">{f.name}</span>
-                  <button type="button" onClick={() => removeCollateralFile(i)} className="text-red-600 dark:text-red-400 px-2">✕</button>
-                </li>
-              ))}
-            </ul>
+              {formData.payoutMethod === "mobile_money" ? (
+                <div className="space-y-3">
+                  <input type="tel" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Mobile money phone number (e.g. 0888 123 456)" className={inputCls} required />
+                  <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Registered name on the account" className={inputCls} required />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <input type="text" name="payoutAccountNumber" value={formData.payoutAccountNumber} onChange={handleChange} placeholder="Bank account number" className={inputCls} required />
+                  <input type="text" name="payoutAccountName" value={formData.payoutAccountName} onChange={handleChange} placeholder="Account name" className={inputCls} required />
+                  <input type="text" name="payoutBranch" value={formData.payoutBranch} onChange={handleChange} placeholder="Branch (e.g. Lilongwe)" className={inputCls} required />
+                </div>
+              )}
+            </>
           )}
         </div>
+      )}
 
-        {coverage && coverage.shortfall > 0 && coverage.passesFloor && (
-          <label className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded p-3 text-slate-700 dark:text-slate-300">
-            <input type="checkbox" checked={formData.ackShortfall} onChange={(e) => setFormData((prev) => ({ ...prev, ackShortfall: e.target.checked }))} className="mt-1" />
-            <span>I understand if I forfeit, I still owe the shortfall of {formatMwk(coverage.shortfall)}.</span>
-          </label>
+      {/* ---- Step 3: Collateral & ID Details ---- */}
+      {activeStep === 2 && (
+        <div className="space-y-3">
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Collateral <span className="text-red-500">*</span></h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Must be worth at least the amount you receive. Photos/documents: {COLLATERAL_MIN_FILES}–{COLLATERAL_MAX_FILES} required.</p>
+            <div className="flex gap-2 flex-wrap">
+              {COLLATERAL_TYPES.map((t) => (
+                <button key={t.id} type="button" onClick={() => setFormData((prev) => ({ ...prev, collateralType: t.id }))}
+                  className={`px-3 py-1.5 rounded-full text-sm border ${formData.collateralType === t.id ? "bg-slate-900 dark:bg-slate-700 text-white border-slate-900 dark:border-slate-600" : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <textarea name="collateralDescription" value={formData.collateralDescription} onChange={handleChange} placeholder="Describe the collateral (e.g. 1 acre in Area 25, plot no…, Honda Fit 2012 reg…)" className={inputCls} required />
+            <input type="number" name="collateralValue" value={formData.collateralValue} onChange={handleChange} placeholder="Estimated value (MWK)" className={inputCls} required />
+
+            {coverage && Number(formData.amount) > 0 && Number(formData.collateralValue) > 0 && (
+              <div className={`rounded p-3 text-sm border ${!coverage.passesFloor ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200" : coverage.coversTotal ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200" : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200"}`}>
+                {!coverage.passesFloor ? (
+                  <p>❌ Below floor: collateral must at least cover Mwk {Number(formData.amount).toLocaleString()} you receive.</p>
+                ) : coverage.coversTotal ? (
+                  <p>✅ Covers total {formatMwk(totalRepayment)}. Surplus {formatMwk(coverage.surplus)} returnable after sale if forfeited.</p>
+                ) : (
+                  <p>⚠️ Covers principal ({coverage.vsPrincipal.toFixed(2)}x) but short of total by {formatMwk(coverage.shortfall)}. If forfeited you still owe the shortfall.</p>
+                )}
+              </div>
+            )}
+
+            <div>
+              <label className="block mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">Collateral photos/documents ({formData.collateralFiles.length}/{COLLATERAL_MAX_FILES})</label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Take a photo with your camera or choose saved files (images + PDFs).</p>
+              <div className="flex gap-2 flex-wrap">
+                {isMobile && formData.collateralFiles.length < COLLATERAL_MAX_FILES && (
+                  <label className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium cursor-pointer">
+                    📷 Take photo
+                    <input type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
+                  </label>
+                )}
+                <label className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-medium cursor-pointer bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                  📁 Choose files
+                  <input type="file" name="collateralFiles" accept="image/*,.pdf" multiple onChange={handleChange} className="hidden" />
+                </label>
+              </div>
+              {formData.collateralFiles.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {formData.collateralFiles.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded px-2 py-1 text-slate-700 dark:text-slate-300">
+                      <span className="truncate">{f.name}</span>
+                      <button type="button" onClick={() => removeCollateralFile(i)} className="text-red-600 dark:text-red-400 px-2">✕</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {coverage && coverage.shortfall > 0 && coverage.passesFloor && (
+              <label className="flex items-start gap-2 text-sm bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded p-3 text-slate-700 dark:text-slate-300">
+                <input type="checkbox" checked={formData.ackShortfall} onChange={(e) => setFormData((prev) => ({ ...prev, ackShortfall: e.target.checked }))} className="mt-1" />
+                <span>I understand if I forfeit, I still owe the shortfall of {formatMwk(coverage.shortfall)}.</span>
+              </label>
+            )}
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium text-slate-700 dark:text-slate-300">Upload National ID (PDF/JPG/PNG) <span className="text-red-500">*</span></label>
+            <input type="file" name="nationalId" accept=".pdf,.jpg,.jpeg,.png" onChange={handleChange} className="w-full text-slate-700 dark:text-slate-300 text-sm" required />
+            {formData.nationalId && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">Selected: {formData.nationalId.name}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---- Nav buttons ---- */}
+      <div className="flex gap-2 pt-2">
+        {activeStep > 0 && (
+          <button type="button" onClick={handleBack} className="flex-1 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 py-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 font-medium">
+            ← Back
+          </button>
+        )}
+        {activeStep < STEPS.length - 1 ? (
+          <button type="button" onClick={handleNext} className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 font-medium">
+            Next →
+          </button>
+        ) : (
+          <button type="submit" disabled={submitting} className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50 font-medium">
+            {submitting ? "Submitting..." : "Submit Application"}
+          </button>
         )}
       </div>
-
-      <div>
-        <label className="block mb-1 font-medium text-slate-700 dark:text-slate-300">Upload National ID (PDF/JPG/PNG)</label>
-        <input type="file" name="nationalId" accept=".pdf,.jpg,.jpeg,.png" onChange={handleChange} className="w-full" required />
-      </div>
-
-      <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50">
-        {submitting ? "Submitting..." : "Submit Application"}
-      </button>
 
       {message && <p className="text-sm text-center text-green-700 dark:text-green-300 font-medium">{message}</p>}
     </form>
